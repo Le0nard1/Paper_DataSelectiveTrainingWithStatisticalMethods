@@ -20,7 +20,7 @@
 
 \begin{document}
 
-\title{Advanced Methods for Weakspot Identification in\\Regression Models: From Standard Detectors to\\Structured Ensembles}
+\title{Data-Selective Machine Learning Training Based on\\Statistical Weakspot Identification}
 
 \author{\IEEEauthorblockN{}
 \IEEEauthorblockA{\textit{} \\
@@ -36,21 +36,285 @@ tbd
 \end{abstract}
 
 \begin{IEEEkeywords}
-weakspot identification, model failure detection, ensemble methods,
-Gaussian processes, quantile regression, extreme value theory, regression
-diagnostics, uncertainty quantification.
+data-selective training, weakspot identification, active learning,
+curriculum learning, hard-example mining, importance sampling, sample
+efficiency, supervised learning, regression.
 \end{IEEEkeywords}
 
 % =============================================================================
 \section{Introduction}
-tbd
+\label{sec:intro}
+
+The performance of a supervised model improves with the amount of data it is
+trained on, but this improvement is far from uniform. Across many domains the
+generalisation error follows an approximately power-law learning
+curve: it falls quickly while data are scarce and then flattens into a long
+regime of diminishing returns~\cite{hestness2017}. In this asymptotic tail each
+additional example contributes less than the last, so that the late stages of
+learning become the most troublesome part of the process, and reaching an
+accuracy target that was cheap to approach can demand disproportionately large
+amounts of further data~\cite{hestness2017,sorscher2022}. This plateau is not
+simply a matter of possessing ``enough'' data in aggregate. A model can be
+trained on a large dataset and still learn slowly, because the examples that
+would most improve it are rare relative to the many that merely reconfirm what it
+already represents.
+
+Data and compute are, in practice, always limited resources, and the imbalance
+is most acute in industrial settings. Whereas academic benchmarks often assume a
+large, curated corpus, real deployments frequently operate under tight
+constraints: labelled data may be expensive to annotate, protected for privacy
+or regulatory reasons, or physically infeasible to obtain, as when each example
+corresponds to a destructive material test, a costly simulation, or a rare
+operating condition of a machine. Under such constraints the aggregate size of a
+dataset is a poor proxy for its value, and the ability to extract the most
+learning from each available example, rather than simply to acquire more
+examples, becomes the binding factor on model quality.
+
+The machine-learning literature has long recognised that not every example is
+equally useful, and the broad field of selective data sampling has repeatedly
+shown that training on a well-chosen subset can match or exceed training on the
+full dataset at a fraction of the cost~\cite{settles2009,sorscher2022,katharopoulos2018}.
+Active learning, curriculum learning, hard-example mining and related methods all
+exploit this observation in different ways (Section~\ref{sec:strategies}). Their
+industrial applicability is, however, narrower than their success on benchmarks
+suggests. Active learning presupposes a large pool of unlabelled data together
+with an oracle that can be queried for new labels on demand, an arrangement that
+does not exist once a dataset has been collected, fixed and fully
+labelled~\cite{settles2009,farquhar2021}. Curriculum and self-paced schemes
+require a reliable notion of example difficulty and re-order data the model
+already holds rather than deciding what is worth learning
+next~\cite{bengio2009,kumar2010}. Many selection rules are also unstable in the
+low-data regime in which they would be most valuable, favouring outliers or
+redundant batches before the model is accurate enough to judge
+informativeness~\cite{chen2022coldstart,ash2020}. The net effect is that the
+strategies proven most effective in principle map poorly onto the fixed-budget,
+fully-labelled conditions that dominate industrial practice.
+
+We therefore propose a data-selective training strategy built on statistical
+weakspot identification. A weakspot is a compact region of the input space in
+which a trained model performs poorly, typically because that region was
+under-represented in the data the model has seen so far~\cite{ovadia2019}. Our
+previous work developed statistical methods that locate such regions in a trained
+regression model from its error distribution alone, without access to ground
+truth~\cite{weakspotprior}. The central idea of the present paper is to close the
+loop: rather than treating weakspot identification only as a post-hoc diagnostic,
+we use it to steer training, directing supervision preferentially to the regions
+where the model currently knows the least. This is an intuitive principle, namely
+to spend the next unit of data or compute where the model is weakest, and it fits
+the fixed-dataset setting naturally, because it selects among data the model
+already possesses rather than assuming an external oracle.
+
+An intuitive principle is not, by itself, evidence. The efficacy of
+weakspot-guided training must be demonstrated rather than assumed, and its
+behaviour is unlikely to be uniform. Because a weakspot is defined relative to
+the model's current competence, the value of any selection depends on the state
+of the model at the moment the selection is made. The method also introduces
+additional parameters, among them how aggressively to focus on the identified
+region, how often to re-identify it, and how the selected data are mixed with the
+rest, whose settings may decide whether it helps or harms. A responsible
+evaluation must therefore establish not only whether the approach works on
+average but also how it depends on the training state and on these parameters,
+and must consequently identify the conditions under which it is most, and least,
+effective.
+
+To this end we build a training pipeline on top of the weakspot-identification
+methods of our previous work~\cite{weakspotprior} and compare it directly against
+conventional training that draws data without regard to the model's weak regions.
+We construct a controlled experimental setup in which the effect of
+weakspot-guided selection can be isolated, measured against direct-training
+baselines, and analysed across the model states and parameters identified above,
+so that any advantage, or its absence, can be attributed to the selection
+strategy rather than to incidental differences in the setup.
+
+The remainder of this paper is organised as follows.
+Section~\ref{sec:strategies} reviews the existing families of data-selective
+training, clarifies how they relate and differ, explains why they are difficult
+to apply to a fixed, fully-labelled dataset, and sets out the general challenges
+any such method must confront. Section~\ref{sec:setup} formalises the
+weakspot-guided training pipeline and the experimental setup used to evaluate it
+against direct-training baselines. Section~\ref{sec:discussion} interprets the
+results and their limitations, and the Conclusion summarises the study.
+
+% =============================================================================
+\section{Data-Selective Training Strategies}
+\label{sec:strategies}
+
+Data-selective training refers to any strategy that treats the choice of which
+examples to learn from, and in what order or proportion, as a decision to be
+optimised rather than left to uniform random sampling. The premise common to the
+whole family is that examples differ in how much they can still teach a given
+model, so that a fixed training budget spends better on some than on
+others~\cite{katharopoulos2018,sorscher2022}. The families differ mainly in three
+respects: the signal used to score an example, whether that signal is computed
+once or repeatedly as the model changes, and whether the strategy acquires new
+labelled data or merely rearranges and reweights data already in hand. We review
+the principal families through this lens before turning, in
+Section~\ref{sec:fixed}, to their behaviour under a fixed supervised dataset and,
+in Section~\ref{sec:challenges}, to the challenges they share.
+
+\subsection{Families of Selection Strategies}
+\label{sec:families}
+
+Active learning scores unlabelled examples by expected informativeness and
+requests labels for the most informative ones, iterating between querying and
+retraining~\cite{settles2009,cohn1996}. Its canonical signal is model
+uncertainty, favouring points near a decision boundary or with high predictive
+variance, although diversity- and representativeness-based criteria such as
+core-set selection instead choose points that best cover the input
+distribution~\cite{sener2018}, and hybrid gradient-embedding methods combine the
+two~\cite{ash2020}. Active learning is thus fundamentally an \emph{acquisition}
+strategy: its purpose is to decide which of many unlabelled points are worth the
+cost of a label.
+
+Curriculum learning fixes the dataset and instead manipulates the order in which
+examples are presented, beginning with easy examples and gradually introducing
+harder ones, on the hypothesis that a well-shaped ordering speeds convergence and
+improves the final optimum of a non-convex objective~\cite{bengio2009}.
+Self-paced learning makes the same idea adaptive by letting the model, rather
+than a fixed schedule, decide which examples are currently easy enough to
+include, expanding the working set as training proceeds~\cite{kumar2010}. Both
+re-use data the model already holds and both rank examples by difficulty, but
+where curriculum learning relies on a predetermined difficulty measure,
+self-paced learning derives it from the model's own loss and so couples the
+ordering to the training state.
+
+A third family moves in the opposite direction to curriculum learning,
+concentrating training on the examples the model finds hardest. Online
+hard-example mining selects, within each mini-batch, the examples of highest loss
+and updates only on them, on the grounds that easy examples dominate the data yet
+contribute little gradient~\cite{shrivastava2016}. Importance sampling formalises
+the same intuition by drawing examples in proportion to a principled measure such
+as the gradient norm, which provably reduces the variance of the stochastic
+gradient and accelerates training~\cite{katharopoulos2018}. More recent work
+refines ``hardest'' into ``most worth learning'', excluding examples that are
+noisy or already learnt and retaining those that are learnable and not yet
+learnt~\cite{mindermann2022}. These methods are \emph{reweighting} rather than
+acquisition strategies, and their scoring signal is recomputed continually as the
+model changes.
+
+A fourth perspective treats selection as \emph{compression} of an existing
+labelled dataset: given the full set, discard the examples that contribute least
+so that training on the remainder is cheaper with little loss of accuracy. A good
+pruning metric can, in principle, bend the power-law learning curve towards
+exponential scaling, but only when the retained subset is chosen well and the
+dataset is large enough to be redundant~\cite{sorscher2022}. Core-set methods
+provide the same compression through a geometric coverage
+guarantee~\cite{sener2018}.
+
+Despite their varied vocabulary, these families organise along a few axes. The
+first is the selection signal: model uncertainty (active learning), example
+difficulty measured externally (curriculum) or internally (self-paced,
+hard-example mining, importance sampling), or geometric coverage (core-set,
+pruning). The second is temporal: whether examples are scored once, as in static
+pruning or a fixed curriculum, or repeatedly against an evolving model, as in
+self-paced, importance-sampling and prioritised-training schemes. The third, and
+the most consequential for the present work, is whether the strategy acquires new
+labelled data, as active learning does, or only rearranges and reweights data
+already available, as all the others do. Our proposal shares its signal, namely
+where the model is weak, with uncertainty-based active learning, but operates,
+like curriculum and importance sampling, entirely within a dataset that is
+already labelled.
+
+\subsection{Selection within a Fixed, Fully-Labelled Dataset}
+\label{sec:fixed}
+
+The industrial setting that motivates this paper is a classical supervised one: a
+single, limited, fully-labelled dataset is fixed before training begins, and no
+mechanism exists to obtain further labels. Several of the strategies above lose
+their footing under exactly these conditions. Active learning is the clearest
+case, because its defining operation, querying an oracle for the label of a
+chosen unlabelled point, is unavailable when every example is already labelled
+and no unlabelled pool remains; its informativeness criteria retain conceptual
+value, but its acquisition loop cannot run~\cite{settles2009,farquhar2021}. Data
+pruning and core-set selection face the opposite problem: they are designed to
+\emph{remove} data, and their benefit is realised only when the dataset is large
+and redundant~\cite{sorscher2022}, whereas a limited dataset offers little
+redundancy to discard and pruning it further can only reduce the information
+available. Curriculum and self-paced learning do apply, since they merely
+re-order fixed data, but re-ordering alone does not create new information; when
+the dataset is small the model eventually sees every example, and changing the
+schedule affects the optimisation path more than the amount that can ultimately
+be learnt~\cite{bengio2009,kumar2010}. Hard-example mining and importance
+sampling likewise apply and can improve sample efficiency, yet they identify
+hardness at the level of individual points and, on a small fixed dataset, risk
+repeatedly emphasising the same handful of high-loss examples, some of which may
+be mislabelled or anomalous rather than genuinely
+informative~\cite{shrivastava2016,mindermann2022}. What is missing across these
+methods, for the fixed-dataset case, is a strategy that neither assumes new
+labels nor discards data, but instead decides, among the labelled data already
+held, which examples to emphasise on the basis of where the model as a whole is
+failing rather than which isolated points happen to have high loss. This is the
+gap the weakspot-guided approach is designed to fill.
+
+\subsection{Challenges of Data-Selective Training}
+\label{sec:challenges}
+
+Steering training towards a chosen subset of the data is not without risk, and
+several failure modes recur across the whole family of methods; a strategy that
+ignores them can perform worse than uniform sampling. We highlight the challenges
+most relevant to a weakspot-guided approach.
+
+The first is catastrophic failure through over-concentration. If selection
+focuses too narrowly on one region of the input space, the model is effectively
+trained on a shifting, non-stationary distribution, and neural networks are known
+to overwrite previously acquired knowledge when their training distribution
+changes, the phenomenon of catastrophic interference or catastrophic
+forgetting~\cite{mccloskey1989,kirkpatrick2017}. A method that repeatedly pours
+data into the current weakspot may therefore improve locally while degrading the
+regions it has stopped rehearsing, so that the model never converges but instead
+chases its own moving weak region. Preserving coverage of the whole input space
+while still emphasising the weak region is thus a central tension.
+
+The second challenge is that the value of a selection depends on the state of the
+model that produced it. What is informative early in training, when the model is
+globally inaccurate, differs from what is informative late in training, when only
+isolated regions remain weak, and a signal computed against one model state can
+be stale or misleading once the model has moved~\cite{mindermann2022}. Closely
+related is the cold-start problem observed in active learning, where selection
+based on an immature model performs worse than random sampling because the model
+is not yet accurate enough to know where it is weak~\cite{chen2022coldstart}. Any
+weakspot-guided scheme must therefore decide how often to re-identify the weak
+region, and must expect its benefit to vary over the course of training.
+
+A third challenge is statistical bias. By construction, selective training makes
+the data the model learns from no longer representative of the deployment
+distribution, and this shift can bias both the learned model and any risk
+estimate computed from the selected data~\cite{farquhar2021}. Over-representing a
+weak region teaches the model that the region is more common than it truly is,
+which can distort its predictions elsewhere unless the selection is corrected or
+the loss reweighted to account for the altered sampling
+probabilities~\cite{farquhar2021,katharopoulos2018}.
+
+A fourth challenge is the difficulty of distinguishing genuinely informative data
+from merely difficult or corrupted data. Selection rules that chase high error
+will, on real datasets, tend to select mislabelled, noisy or anomalous points,
+because these produce large losses for reasons unrelated to useful
+information~\cite{mindermann2022}. A weakspot located by elevated model error is
+vulnerable to the same confound: a region may appear weak because it is genuinely
+under-learnt or merely because its labels are noisy, and a robust method must
+avoid over-investing in the latter.
+
+Finally, when data are selected in batches rather than one point at a time, naive
+scoring tends to choose many near-identical examples, since the most informative
+points by an individual criterion are often close together; the resulting batch
+is redundant and wastes budget that diversity-aware selection would spend
+better~\cite{ash2020,chen2022coldstart}. A region-based weakspot criterion
+partially mitigates this, because it targets an area rather than isolated points,
+but it must still ensure that the emphasis it places within that area does not
+collapse onto a redundant few examples.
+
+Together these challenges frame the questions the rest of the paper investigates.
+They motivate a method that emphasises a weak region without abandoning the rest
+of the input space, that re-identifies the region as the model evolves, and whose
+parameters can be tuned to trade focus against coverage; and they motivate an
+experimental setup capable of detecting when weakspot-guided training helps, when
+it is neutral, and when it does harm.
 
 % =============================================================================
 \section{Experimental Setup}
 \label{sec:setup}
 
-td
-
+tbd
 
 % =============================================================================
 \section{Discussion}
@@ -66,6 +330,112 @@ tbd
 
 \begin{thebibliography}{00}
 
+\bibitem{hestness2017}
+J.~Hestness, S.~Narang, N.~Ardalani, G.~Diamos, H.~Jun, H.~Kianinejad,
+M.~M.~A. Patwary, Y.~Yang, and Y.~Zhou,
+``Deep learning scaling is predictable, empirically,''
+2017, \emph{arXiv:1712.00409}.
+[Online]. Available: https://arxiv.org/abs/1712.00409
+
+\bibitem{sorscher2022}
+B.~Sorscher, R.~Geirhos, S.~Shekhar, S.~Ganguli, and A.~S. Morcos,
+``Beyond neural scaling laws: Beating power law scaling via data pruning,''
+in \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2022.
+[Online]. Available: https://arxiv.org/abs/2206.14486
+
+\bibitem{ovadia2019}
+Y.~Ovadia, E.~Fertig, J.~Ren, Z.~Nado, D.~Sculley, S.~Nowozin, J.~V. Dillon,
+B.~Lakshminarayanan, and J.~Snoek,
+``Can you trust your model's uncertainty? Evaluating predictive uncertainty
+under dataset shift,''
+in \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2019.
+[Online]. Available: https://arxiv.org/abs/1906.02530
+
+\bibitem{settles2009}
+B.~Settles,
+``Active learning literature survey,''
+Univ. Wisconsin--Madison, Dept. Comput. Sci., Tech. Rep. 1648, 2009.
+[Online]. Available: https://burrsettles.com/pub/settles.activelearning.pdf
+
+\bibitem{cohn1996}
+D.~A. Cohn, Z.~Ghahramani, and M.~I. Jordan,
+``Active learning with statistical models,''
+\emph{J. Artif. Intell. Res.}, vol.~4, pp.~129--145, 1996.
+
+\bibitem{sener2018}
+O.~Sener and S.~Savarese,
+``Active learning for convolutional neural networks: A core-set approach,''
+in \emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2018.
+[Online]. Available: https://arxiv.org/abs/1708.00489
+
+\bibitem{bengio2009}
+Y.~Bengio, J.~Louradour, R.~Collobert, and J.~Weston,
+``Curriculum learning,''
+in \emph{Proc. Int. Conf. Machine Learning (ICML)}, 2009, pp.~41--48.
+
+\bibitem{kumar2010}
+M.~P. Kumar, B.~Packer, and D.~Koller,
+``Self-paced learning for latent variable models,''
+in \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2010,
+pp.~1189--1197.
+
+\bibitem{shrivastava2016}
+A.~Shrivastava, A.~Gupta, and R.~Girshick,
+``Training region-based object detectors with online hard example mining,''
+in \emph{Proc. IEEE Conf. Computer Vision and Pattern Recognition (CVPR)},
+2016, pp.~761--769.
+
+\bibitem{katharopoulos2018}
+A.~Katharopoulos and F.~Fleuret,
+``Not all samples are created equal: Deep learning with importance sampling,''
+in \emph{Proc. Int. Conf. Machine Learning (ICML)}, 2018, pp.~2525--2534.
+[Online]. Available: https://arxiv.org/abs/1803.00942
+
+\bibitem{mindermann2022}
+S.~Mindermann, J.~M. Brauner, M.~T. Razzak, M.~Sharma, A.~Kirsch, W.~Xu,
+B.~H\"oltgen, A.~N. Gomez, A.~Morisot, S.~Farquhar, and Y.~Gal,
+``Prioritized training on points that are learnable, worth learning, and not
+yet learnt,''
+in \emph{Proc. Int. Conf. Machine Learning (ICML)}, 2022.
+[Online]. Available: https://arxiv.org/abs/2206.07137
+
+\bibitem{farquhar2021}
+S.~Farquhar, Y.~Gal, and T.~Rainforth,
+``On statistical bias in active learning: How and when to fix it,''
+in \emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2021.
+[Online]. Available: https://arxiv.org/abs/2101.11665
+
+\bibitem{ash2020}
+J.~T. Ash, C.~Zhang, A.~Krishnamurthy, J.~Langford, and A.~Agarwal,
+``Deep batch active learning by diverse, uncertain gradient lower bounds,''
+in \emph{Proc. Int. Conf. Learning Representations (ICLR)}, 2020.
+[Online]. Available: https://arxiv.org/abs/1906.03671
+
+\bibitem{kirkpatrick2017}
+J.~Kirkpatrick, R.~Pascanu, N.~Rabinowitz, J.~Veness, G.~Desjardins,
+A.~A. Rusu, K.~Milan, J.~Quan, T.~Ramalho, A.~Grabska-Barwinska, D.~Hassabis,
+C.~Clopath, D.~Kumaran, and R.~Hadsell,
+``Overcoming catastrophic forgetting in neural networks,''
+\emph{Proc. Nat. Acad. Sci.}, vol.~114, no.~13, pp.~3521--3526, 2017.
+
+\bibitem{mccloskey1989}
+M.~McCloskey and N.~J. Cohen,
+``Catastrophic interference in connectionist networks: The sequential
+learning problem,''
+\emph{Psychol. Learn. Motiv.}, vol.~24, pp.~109--165, 1989.
+
+\bibitem{chen2022coldstart}
+L.~Chen, Y.~Bai, S.~Huang, Y.~Lu, B.~Wen, A.~L. Yuille, and Z.~Zhou,
+``Making your first choice: To address cold start problem in vision active
+learning,''
+2022, \emph{arXiv:2210.02442}.
+[Online]. Available: https://arxiv.org/abs/2210.02442
+
+% TODO: fill in the author list and final publication venue for the companion
+% weakspot-identification paper before submission.
+\bibitem{weakspotprior}
+``Advanced methods for weakspot identification in regression models: From
+standard detectors to structured ensembles,'' 2025, unpublished.
 
 \end{thebibliography}
 

@@ -1,191 +1,132 @@
 # Source Links for Manual Verification
 
 This file lists every reference cited in `main.tex`, in the same order as the
-bibliography, with links so each citation can be checked manually.
+`thebibliography` block, with links so each citation can be checked manually.
 
-- **Canonical** = the official publisher / DOI page (authoritative for
-  authors, title, volume, pages, year). May be paywalled.
+- **Canonical** = the official publisher / DOI / proceedings page (authoritative
+  for authors, title, volume, pages, year). May be paywalled.
 - **Free access** = a legitimate openly accessible copy (arXiv, open-access
-  journal, author/course PDF, or free book site), where one exists.
+  journal, author PDF, or proceedings), where one exists.
 - **Access** = whether a freely readable full text is available.
 
-Reference numbering was updated on 2026-06-12 after adding six new citations
-([1] Amodei, [2] Ovadia in the introduction; [19] Wolpert, [20] Hinton,
-[21] Jacobs, [22] Nguyen-Tuong for the advanced methods). All links were
-re-checked via web search on 2026-06-12. Please still verify them yourself
+This bibliography was written on 2026-07-02 for the *Data-Selective Machine
+Learning Training Based on Statistical Weakspot Identification* paper. All links
+were checked via web search on 2026-07-02. Please still verify them yourself
 before submission, since links rot and mirrors change.
 
 ---
 
-## [1] Amodei et al. 2016 — Concrete Problems in AI Safety (safety-critical ML failures)
-- D. Amodei, C. Olah, J. Steinhardt, P. Christiano, J. Schulman, and D. Mané, "Concrete problems in AI safety," arXiv:1606.06565, 2016.
-- Canonical / Free: https://arxiv.org/abs/1606.06565
+## [1] Hestness et al. 2017 — deep learning scaling is predictable (power-law learning curve)
+- J. Hestness, S. Narang, N. Ardalani, G. Diamos, H. Jun, H. Kianinejad, M. M. A. Patwary, Y. Yang, and Y. Zhou, "Deep learning scaling is predictable, empirically," arXiv:1712.00409, 2017.
+- Canonical / Free: https://arxiv.org/abs/1712.00409
 - **Access: FREE (arXiv).**
-- Cited in: Introduction (deployment of ML in safety-critical applications).
+- Cited in: Introduction (asymptotic power-law learning curve; diminishing returns in the late stages).
 
-## [2] Ovadia et al. 2019 — predictive uncertainty under dataset shift
+## [2] Sorscher et al. 2022 — beyond neural scaling laws via data pruning
+- B. Sorscher, R. Geirhos, S. Shekhar, S. Ganguli, and A. S. Morcos, "Beyond neural scaling laws: beating power law scaling via data pruning," NeurIPS 2022 (Outstanding Paper).
+- Canonical: https://proceedings.neurips.cc/paper_files/paper/2022/hash/7b75da9b61eda40fa35453ee5d077df6-Abstract-Conference.html
+- Free: https://arxiv.org/abs/2206.14486
+- **Access: FREE (arXiv + NeurIPS proceedings).**
+- Cited in: Introduction (diminishing returns; selective sampling effective); Sec. II-A (data pruning as compression); Sec. II-B (pruning needs a large, redundant dataset).
+
+## [3] Ovadia et al. 2019 — predictive uncertainty under dataset shift
 - Y. Ovadia, E. Fertig, J. Ren, Z. Nado, D. Sculley, S. Nowozin, J. V. Dillon, B. Lakshminarayanan, and J. Snoek, "Can you trust your model's uncertainty? Evaluating predictive uncertainty under dataset shift," NeurIPS 2019.
 - Free: https://arxiv.org/abs/1906.02530
 - Canonical (NeurIPS): https://proceedings.neurips.cc/paper/2019/hash/8558cb408c1d76621371888657d2eb1d-Abstract.html
 - **Access: FREE (arXiv + NeurIPS proceedings).**
-- Cited in: Introduction (models become unreliable in under-represented regions).
+- Cited in: Introduction (models become unreliable in under-represented regions; definition of a weakspot).
 
-## [3] Hendrycks & Gimpel 2017 — OOD baseline
-- D. Hendrycks and K. Gimpel, "A baseline for detecting misclassified and out-of-distribution examples in neural networks," ICLR 2017.
-- Canonical / Free: https://arxiv.org/abs/1610.02136
-- Code: https://github.com/hendrycks/error-detection
+## [4] Settles 2009 — active learning literature survey
+- B. Settles, "Active learning literature survey," Univ. Wisconsin–Madison, Dept. Comput. Sci., Tech. Rep. 1648, 2009.
+- Canonical / Free: https://burrsettles.com/pub/settles.activelearning.pdf
+- Mirror: https://research.cs.wisc.edu/techreports/2009/TR1648.pdf
+- **Access: FREE (author copy + institutional mirror).**
+- Cited in: Introduction (selective sampling; active learning assumes an unlabelled pool + oracle); Sec. II-A (active learning); Sec. II-B (acquisition loop cannot run on a fully-labelled set).
+
+## [5] Cohn, Ghahramani & Jordan 1996 — active learning with statistical models
+- D. A. Cohn, Z. Ghahramani, and M. I. Jordan, "Active learning with statistical models," J. Artif. Intell. Res., vol. 4, pp. 129–145, 1996.
+- Canonical: https://www.jair.org/index.php/jair/article/view/10158
+- Free: https://arxiv.org/abs/cs/9603104
+- **Access: FREE (JAIR open access + arXiv).**
+- Cited in: Sec. II-A (foundational active-learning formulation).
+
+## [6] Sener & Savarese 2018 — active learning core-set approach
+- O. Sener and S. Savarese, "Active learning for convolutional neural networks: A core-set approach," ICLR 2018.
+- Canonical (OpenReview): https://openreview.net/forum?id=H1aIuk-RW
+- Free: https://arxiv.org/abs/1708.00489
+- **Access: FREE (arXiv + OpenReview).**
+- Cited in: Sec. II-A (diversity / coverage-based selection; core-set compression).
+
+## [7] Bengio et al. 2009 — curriculum learning
+- Y. Bengio, J. Louradour, R. Collobert, and J. Weston, "Curriculum learning," ICML 2009, pp. 41–48.
+- Canonical (ACM): https://doi.org/10.1145/1553374.1553380
+- Free: https://www.semanticscholar.org/paper/Curriculum-learning-Bengio-Louradour/8de174ab5419b9d3127695405efd079808e956e8
+- **Access: FREE copies widely available (Semantic Scholar / author copies); canonical ACM page may be paywalled.**
+- Cited in: Introduction (curriculum re-orders existing data); Sec. II-A (curriculum learning); Sec. II-B (re-ordering does not add information).
+
+## [8] Kumar, Packer & Koller 2010 — self-paced learning
+- M. P. Kumar, B. Packer, and D. Koller, "Self-paced learning for latent variable models," NeurIPS 2010, pp. 1189–1197.
+- Canonical: https://proceedings.neurips.cc/paper/2010/hash/e57c6b956a6521b28495f2886ca0977a-Abstract.html
+- Free: https://ai.stanford.edu/~bpacker/selfPacedLVM.pdf
+- **Access: FREE (NeurIPS proceedings + author PDF).**
+- Cited in: Introduction (self-paced re-orders existing data); Sec. II-A (self-paced learning couples ordering to training state); Sec. II-B.
+
+## [9] Shrivastava, Gupta & Girshick 2016 — online hard example mining (OHEM)
+- A. Shrivastava, A. Gupta, and R. Girshick, "Training region-based object detectors with online hard example mining," CVPR 2016, pp. 761–769.
+- Canonical (CVF): https://openaccess.thecvf.com/content_cvpr_2016/html/Shrivastava_Training_Region-Based_Object_CVPR_2016_paper.html
+- Free: https://arxiv.org/abs/1604.03540
+- **Access: FREE (arXiv + CVF open access).**
+- Cited in: Sec. II-A (hard-example mining); Sec. II-B (risk of repeatedly emphasising the same high-loss points).
+
+## [10] Katharopoulos & Fleuret 2018 — deep learning with importance sampling
+- A. Katharopoulos and F. Fleuret, "Not all samples are created equal: Deep learning with importance sampling," ICML 2018, pp. 2525–2534.
+- Canonical (PMLR): https://proceedings.mlr.press/v80/katharopoulos18a.html
+- Free: https://arxiv.org/abs/1803.00942
+- **Access: FREE (arXiv + PMLR).**
+- Cited in: Introduction (selective sampling effective); Sec. II-A (importance sampling; variance reduction); Sec. II-C (reweighting to correct altered sampling).
+
+## [11] Mindermann et al. 2022 — prioritized training (RHO-LOSS)
+- S. Mindermann, J. M. Brauner, M. T. Razzak, M. Sharma, A. Kirsch, W. Xu, B. Höltgen, A. N. Gomez, A. Morisot, S. Farquhar, and Y. Gal, "Prioritized training on points that are learnable, worth learning, and not yet learnt," ICML 2022.
+- Canonical (PMLR): https://proceedings.mlr.press/v162/mindermann22a.html
+- Free: https://arxiv.org/abs/2206.07137
+- **Access: FREE (arXiv + PMLR).**
+- Cited in: Sec. II-A ("most worth learning" refinement of hard mining); Sec. II-B; Sec. II-C (training-state staleness; noisy vs. informative points).
+
+## [12] Farquhar, Gal & Rainforth 2021 — statistical bias in active learning
+- S. Farquhar, Y. Gal, and T. Rainforth, "On statistical bias in active learning: How and when to fix it," ICLR 2021.
+- Canonical (OpenReview): https://openreview.net/forum?id=JiYq3eqTKY
+- Free: https://arxiv.org/abs/2101.11665
+- **Access: FREE (arXiv + OpenReview).**
+- Cited in: Introduction (fully-labelled setting); Sec. II-B; Sec. II-C (selective training biases the model and risk estimates; reweighting correction).
+
+## [13] Ash et al. 2020 — deep batch active learning (BADGE)
+- J. T. Ash, C. Zhang, A. Krishnamurthy, J. Langford, and A. Agarwal, "Deep batch active learning by diverse, uncertain gradient lower bounds," ICLR 2020.
+- Canonical (OpenReview): https://openreview.net/forum?id=ryghZJBKPS
+- Free: https://arxiv.org/abs/1906.03671
+- **Access: FREE (arXiv + OpenReview).**
+- Cited in: Introduction (redundant-batch instability in the low-data regime); Sec. II-A (hybrid uncertainty + diversity); Sec. II-C (batch redundancy / diversity).
+
+## [14] Kirkpatrick et al. 2017 — overcoming catastrophic forgetting (EWC)
+- J. Kirkpatrick, R. Pascanu, N. Rabinowitz, J. Veness, G. Desjardins, A. A. Rusu, K. Milan, J. Quan, T. Ramalho, A. Grabska-Barwinska, D. Hassabis, C. Clopath, D. Kumaran, and R. Hadsell, "Overcoming catastrophic forgetting in neural networks," Proc. Nat. Acad. Sci., vol. 114, no. 13, pp. 3521–3526, 2017.
+- Canonical (PNAS): https://www.pnas.org/doi/10.1073/pnas.1611835114
+- Free: https://arxiv.org/abs/1612.00796
+- **Access: FREE (arXiv; PNAS article also openly readable).**
+- Cited in: Sec. II-C (catastrophic forgetting under a shifting training distribution).
+
+## [15] McCloskey & Cohen 1989 — catastrophic interference (original)
+- M. McCloskey and N. J. Cohen, "Catastrophic interference in connectionist networks: The sequential learning problem," Psychol. Learn. Motiv., vol. 24, pp. 109–165, 1989.
+- Canonical: https://doi.org/10.1016/S0079-7421(08)60536-8
+- **Access: PAYWALLED (book chapter; no legitimate open-access full text located). Verify via a library.**
+- Cited in: Sec. II-C (original description of catastrophic interference).
+
+## [16] Chen et al. 2022 — cold start problem in vision active learning
+- L. Chen, Y. Bai, S. Huang, Y. Lu, B. Wen, A. L. Yuille, and Z. Zhou, "Making your first choice: To address cold start problem in vision active learning," arXiv:2210.02442, 2022.
+- Canonical / Free: https://arxiv.org/abs/2210.02442
 - **Access: FREE (arXiv).**
+- Cited in: Introduction (selection unstable in the low-data regime); Sec. II-C (cold-start problem; batch redundancy).
 
-## [4] Shafaei, Schmidt & Little 2019 — less biased OOD evaluation
-- A. Shafaei, M. Schmidt, and J. J. Little, "A less biased evaluation of out-of-distribution sample detectors," BMVC 2019.
-- Canonical / Free: https://arxiv.org/abs/1809.04729
-- Code: https://github.com/ashafaei/OD-test
-- **Access: FREE (arXiv).**
-
-## [5] Geifman & El-Yaniv 2017 — selective classification
-- Y. Geifman and R. El-Yaniv, "Selective classification for deep neural networks," NeurIPS 2017.
-- Canonical (NeurIPS): https://proceedings.neurips.cc/paper_files/paper/2017/hash/4a8423d5e91fda00bb7e46540e2b0cf1-Abstract.html
-- Free: https://arxiv.org/abs/1705.08500
-- **Access: FREE (arXiv + NeurIPS proceedings).**
-
-## [6] Rasmussen & Williams 2006 — Gaussian Processes for Machine Learning
-- C. E. Rasmussen and C. K. I. Williams, *Gaussian Processes for Machine Learning*, MIT Press, 2006.
-- Canonical / Free (full book PDF): https://gaussianprocess.org/gpml/
-- **Access: FREE (official book website).**
-
-## [7] Hardy 1971 — multiquadric RBF (primary source for RBF interpolation)
-- R. L. Hardy, "Multiquadric equations of topography and other irregular surfaces," J. Geophys. Res., vol. 76, no. 8, pp. 1905–1915, 1971.
-- Canonical (DOI): https://doi.org/10.1029/JB076i008p01905
-- Wiley page: https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1029/JB076i008p01905
-- NASA ADS record: https://ui.adsabs.harvard.edu/abs/1971JGR....76.1905H/abstract
-- **Access: PAYWALLED (seminal primary source). Companion free source: see [8] Buhmann.**
-
-## [8] Buhmann 2003 — Radial Basis Functions (textbook)
-- M. D. Buhmann, *Radial Basis Functions: Theory and Implementations*, Cambridge Univ. Press, 2003.
-- Canonical: https://doi.org/10.1017/CBO9780511543241
-- **Access: PAYWALLED (textbook).**
-
-## [9] Altman 1992 — kernel & nearest-neighbor nonparametric regression (primary source for kNN)
-- N. S. Altman, "An introduction to kernel and nearest-neighbor nonparametric regression," Amer. Statist., vol. 46, no. 3, pp. 175–185, 1992.
-- Canonical (DOI): https://doi.org/10.1080/00031305.1992.10475879
-- Free PDF (course mirror): https://sites.stat.washington.edu/courses/stat527/s13/readings/Altman_AmStat_1992.pdf
-- **Access: FREE (author/course PDF).**
-
-## [10] Cleveland 1979 — LOESS (robust locally weighted regression)
-- W. S. Cleveland, "Robust locally weighted regression and smoothing scatterplots," J. Amer. Statist. Assoc., vol. 74, no. 368, pp. 829–836, 1979.
-- Canonical (DOI): https://doi.org/10.1080/01621459.1979.10481038
-- Free PDF (course mirror): https://sites.stat.washington.edu/courses/stat527/s13/readings/Cleveland_JASA_1979.pdf
-- Free PDF (alt mirror): https://home.engineering.iastate.edu/~shermanp/STAT447/Lectures/Cleveland%20paper.pdf
-- **Access: FREE (author/course PDF).**
-
-## [11] Koenker & Bassett 1978 — regression quantiles (primary source for quantile regression)
-- R. Koenker and G. Bassett, "Regression quantiles," Econometrica, vol. 46, no. 1, pp. 33–50, 1978.
-- Canonical (Econometric Society): https://www.econometricsociety.org/publications/econometrica/1978/01/01/regression-quantiles
-- JSTOR: https://www.jstor.org/stable/1913643
-- **Access: PAYWALLED (seminal primary source). Companion free source: see [12] Koenker & Hallock.**
-
-## [12] Koenker & Hallock 2001 — quantile regression (accessible overview)
-- R. Koenker and K. F. Hallock, "Quantile regression," J. Econ. Perspect., vol. 15, no. 4, pp. 143–156, 2001.
-- Canonical / Free (AEA, open): https://doi.org/10.1257/jep.15.4.143
-- Author PDF: http://www.econ.uiuc.edu/~roger/research/rq/QRJEP.pdf
-- **Access: FREE (Journal of Economic Perspectives is open access).**
-
-## [13] Pickands 1975 — peaks-over-threshold / extreme value theory (primary source)
-- J. Pickands, "Statistical inference using extreme order statistics," Ann. Statist., vol. 3, no. 1, pp. 119–131, 1975.
-- Canonical / Free (Project Euclid, open): https://projecteuclid.org/journals/annals-of-statistics/volume-3/issue-1/Statistical-Inference-Using-Extreme-Order-Statistics/10.1214/aos/1176343003.full
-- DOI: https://doi.org/10.1214/aos/1176343003
-- **Access: FREE (Project Euclid open access).**
-
-## [14] Coles 2001 — Introduction to Statistical Modeling of Extreme Values (textbook)
-- S. Coles, *An Introduction to Statistical Modeling of Extreme Values*, Springer, 2001.
-- Canonical: https://doi.org/10.1007/978-1-4471-3675-0
-- **Access: PAYWALLED (textbook).**
-
-## [15] Jones, Schonlau & Welch 1998 — Efficient Global Optimization / Expected Improvement (primary source)
-- D. R. Jones, M. Schonlau, and W. J. Welch, "Efficient global optimization of expensive black-box functions," J. Global Optim., vol. 13, no. 4, pp. 455–492, 1998.
-- Canonical (DOI): https://doi.org/10.1023/A:1008306431147
-- Springer: https://link.springer.com/article/10.1023/A:1008306431147
-- **Access: PAYWALLED (seminal primary source). Companion free source: see [16] Frazier.**
-
-## [16] Frazier 2018 — tutorial on Bayesian optimization (covers Expected Improvement)
-- P. I. Frazier, "A tutorial on Bayesian optimization," arXiv:1807.02811, 2018.
-- Canonical / Free: https://arxiv.org/abs/1807.02811
-- **Access: FREE (arXiv).**
-
-## [17] Lakshminarayanan, Pritzel & Blundell 2017 — deep ensembles
-- B. Lakshminarayanan, A. Pritzel, and C. Blundell, "Simple and scalable predictive uncertainty estimation using deep ensembles," NeurIPS 2017.
-- Canonical (NeurIPS): https://papers.nips.cc/paper/7219-simple-and-scalable-predictive-uncertainty-estimation-using-deep-ensembles
-- Free: https://arxiv.org/abs/1612.01474
-- **Access: FREE (arXiv + NeurIPS proceedings).**
-
-## [18] Kuleshov, Fenner & Ermon 2018 — calibrated regression
-- V. Kuleshov, N. Fenner, and S. Ermon, "Accurate uncertainties for deep learning using calibrated regression," ICML 2018.
-- Canonical / Free: https://arxiv.org/abs/1807.00263
-- **Access: FREE (arXiv).**
-
-## [19] Wolpert 1992 — Stacked generalization (idea: combining detector outputs)
-- D. H. Wolpert, "Stacked generalization," Neural Networks, vol. 5, no. 2, pp. 241–259, 1992.
-- Canonical (DOI / Elsevier): https://doi.org/10.1016/S0893-6080(05)80023-1
-- Free PDF (mirror): https://machine-learning.martinsewell.com/ensembles/stacking/Wolpert1992.pdf
-- **Access: FREE (mirror PDF); canonical Elsevier page is paywalled.**
-- Cited in: Advanced Methods (combining error-intensity surfaces).
-
-## [20] Hinton 2002 — Products of experts (idea: geometric-mean consensus)
-- G. E. Hinton, "Training products of experts by minimizing contrastive divergence," Neural Computation, vol. 14, no. 8, pp. 1771–1800, 2002.
-- Canonical (MIT Press): https://direct.mit.edu/neco/article/14/8/1771/6687
-- Free PDF (author, Univ. of Toronto): https://www.cs.toronto.edu/~hinton/absps/nccd.pdf
-- **Access: FREE (author PDF); canonical MIT Press page is paywalled.**
-- Cited in: Advanced Methods, Averaging and consensus (geometric-mean consensus).
-
-## [21] Jacobs, Jordan, Nowlan & Hinton 1991 — Adaptive mixtures of local experts (idea: variance-weighted gating)
-- R. A. Jacobs, M. I. Jordan, S. J. Nowlan, and G. E. Hinton, "Adaptive mixtures of local experts," Neural Computation, vol. 3, no. 1, pp. 79–87, 1991.
-- Canonical (MIT Press): https://direct.mit.edu/neco/article/3/1/79/5560
-- Free copy (Semantic Scholar PDF): https://www.semanticscholar.org/paper/Adaptive-Mixtures-of-Local-Experts-Jacobs-Jordan/c8d90974c3f3b40fa05e322df2905fc16204aa56
-- Free copy (ResearchGate): https://www.researchgate.net/publication/233806999_Adaptive_Mixtures_of_Local_Experts
-- **Access: FREE (open mirrors); canonical MIT Press page is paywalled.**
-- Cited in: Advanced Methods, Averaging and consensus (variance-weighted mixture / gating).
-
-## [22] Nguyen-Tuong, Seeger & Peters 2008 — Local Gaussian process regression (idea: two-stage local refitting)
-- D. Nguyen-Tuong, M. Seeger, and J. Peters, "Local Gaussian process regression for real time online model learning," NeurIPS 2008.
-- Canonical / Free (NeurIPS): https://proceedings.neurips.cc/paper/2008/hash/01161aaa0b6d1345dd8fe4e481144d84-Abstract.html
-- Related journal version (free author PDF, TU Darmstadt): https://www.ias.informatik.tu-darmstadt.de/uploads/Publications/Publications/Nguyen-Tuong-ModelLearningLocalGaussian.pdf
-- **Access: FREE (NeurIPS proceedings).**
-- Cited in: Advanced Methods, Local refitting (two-stage Local GPR).
-
----
-
-## Summary
-
-| # | Key | Year | Freely readable full text? |
-|---|-----|------|----------------------------|
-| 1 | amodei2016 | 2016 | Yes (arXiv) |
-| 2 | ovadia2019 | 2019 | Yes (arXiv + NeurIPS) |
-| 3 | hendrycks2017 | 2017 | Yes (arXiv) |
-| 4 | shafaei2018 | 2019 | Yes (arXiv) |
-| 5 | geifman2017 | 2017 | Yes (arXiv) |
-| 6 | rasmussen2006 | 2006 | Yes (book website) |
-| 7 | hardy1971 | 1971 | No (paywalled primary) |
-| 8 | buhmann2003 | 2003 | No (textbook) |
-| 9 | altman1992 | 1992 | Yes (course PDF) |
-| 10 | cleveland1979 | 1979 | Yes (course PDF) |
-| 11 | koenker_bassett1978 | 1978 | No (paywalled primary) |
-| 12 | koenker2001 | 2001 | Yes (JEP open access) |
-| 13 | pickands1975 | 1975 | Yes (Project Euclid) |
-| 14 | coles2001 | 2001 | No (textbook) |
-| 15 | jones1998 | 1998 | No (paywalled primary) |
-| 16 | frazier2018 | 2018 | Yes (arXiv) |
-| 17 | lakshminarayanan2017 | 2017 | Yes (arXiv) |
-| 18 | kuleshov2018 | 2018 | Yes (arXiv) |
-| 19 | wolpert1992 | 1992 | Yes (mirror PDF) |
-| 20 | hinton2002 | 2002 | Yes (author PDF) |
-| 21 | jacobs1991 | 1991 | Yes (open mirrors) |
-| 22 | nguyentuong2008 | 2008 | Yes (NeurIPS) |
-
-**Open-access: 17 of 22.** The 5 without a guaranteed free link are either
-classic primary papers ([7] Hardy, [11] Koenker & Bassett, [15] Jones et al.)
-or textbooks ([8] Buhmann, [14] Coles). Each paywalled primary paper is paired
-with a freely readable companion already cited in the same place in the text:
-[7]→[8], [11]→[12], [15]→[16]. The two textbooks ([8], [14]) accompany a free
-primary paper ([7]→ also Hardy, [13] Pickands), so every method's claim can be
-checked against at least one openly accessible source. All six newly added
-references ([1], [2], [19]–[22]) have a freely readable full text.
+## [17] Companion weakspot-identification paper — prior work (this project)
+- (author list and venue TBD) "Advanced methods for weakspot identification in regression models: From standard detectors to structured ensembles," 2025, unpublished.
+- **Access: N/A — companion manuscript from the same author; not yet publicly released.**
+- Cited in: Introduction (statistical weakspot-identification methods that the training pipeline is built on).
+- **TODO:** fill in the author list and final publication venue once the companion paper is submitted/published, and mirror it in the `\bibitem{weakspotprior}` entry in `main.tex`.
