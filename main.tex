@@ -75,20 +75,13 @@ equally useful, and the broad field of selective data sampling has repeatedly
 shown that training on a well-chosen subset can match or exceed training on the
 full dataset at a fraction of the cost~\cite{settles2009,sorscher2022,katharopoulos2018}.
 Active learning, curriculum learning, hard-example mining and related methods all
-exploit this observation in different ways (Section~\ref{sec:strategies}). Their
-industrial applicability is, however, narrower than their success on benchmarks
-suggests. Active learning presupposes a large pool of unlabelled data together
-with an oracle that can be queried for new labels on demand, an arrangement that
-does not exist once a dataset has been collected, fixed and fully
-labelled~\cite{settles2009,farquhar2021}. Curriculum and self-paced schemes
-require a reliable notion of example difficulty and re-order data the model
-already holds rather than deciding what is worth learning
-next~\cite{bengio2009,kumar2010}. Many selection rules are also unstable in the
-low-data regime in which they would be most valuable, favouring outliers or
-redundant batches before the model is accurate enough to judge
-informativeness~\cite{chen2022coldstart,ash2020}. The net effect is that the
-strategies proven most effective in principle map poorly onto the fixed-budget,
-fully-labelled conditions that dominate industrial practice.
+exploit this observation in different ways. Their industrial applicability is,
+however, narrower than their success on benchmarks suggests: each presupposes a
+resource the industrial setting lacks, whether an oracle for fresh labels, a large
+and redundant dataset to prune, or simply enough data for the model to judge
+informativeness reliably. As a result, the strategies proven most effective in
+principle map poorly onto the fixed-budget, fully-labelled conditions that
+dominate industrial practice, as Section~\ref{sec:strategies} sets out in detail.
 
 We therefore propose a data-selective training strategy built on statistical
 weakspot identification. A weakspot is a compact region of the input space in
@@ -109,9 +102,9 @@ weakspot-guided training must be demonstrated rather than assumed, and its
 behaviour is unlikely to be uniform. Because a weakspot is defined relative to
 the model's current competence, the value of any selection depends on the state
 of the model at the moment the selection is made. The method also introduces
-additional parameters, among them how aggressively to focus on the identified
-region, how often to re-identify it, and how the selected data are mixed with the
-rest, whose settings may decide whether it helps or harms. A responsible
+additional parameters, among them how sharply to concentrate the selection on the
+identified region, how much data to add, and how long to retrain, whose settings
+may decide whether it helps or harms. A responsible
 evaluation must therefore establish not only whether the approach works on
 average but also how it depends on the training state and on these parameters,
 and must consequently identify the conditions under which it is most, and least,
@@ -125,6 +118,15 @@ weakspot-guided selection can be isolated, measured against direct-training
 baselines, and analysed across the model states and parameters identified above,
 so that any advantage, or its absence, can be attributed to the selection
 strategy rather than to incidental differences in the setup.
+
+In summary, this paper makes three contributions. First, it reframes the
+selection of informative data as the selection of data inside a model's
+weakspots, a formulation suited to the fixed, fully-labelled datasets common in
+industry. Second, it closes the loop from statistical weakspot identification to
+training, giving a concrete weakspot-guided selection pipeline. Third, it
+evaluates that pipeline against a random-selection baseline across a controlled
+sweep, quantifying how its efficacy depends on the model state, the sharpness of
+the selection, and the identification method.
 
 The remainder of this paper is organised as follows.
 Section~\ref{sec:strategies} reviews the existing families of data-selective
@@ -145,13 +147,12 @@ examples to learn from, and in what order or proportion, as a decision to be
 optimised rather than left to uniform random sampling. The premise common to the
 whole family is that examples differ in how much they can still teach a given
 model, so that a fixed training budget spends better on some than on
-others~\cite{katharopoulos2018,sorscher2022}. The families differ mainly in three
-respects: the signal used to score an example, whether that signal is computed
-once or repeatedly as the model changes, and whether the strategy acquires new
-labelled data or merely rearranges and reweights data already in hand. We review
-the principal families through this lens before turning, in
-Section~\ref{sec:fixed}, to their behaviour under a fixed supervised dataset and,
-in Section~\ref{sec:challenges}, to the challenges they share.
+others~\cite{katharopoulos2018,sorscher2022}. The families differ chiefly in the
+signal they use to score an example and in how that signal relates to the training
+loop; we review the principal families below before drawing out the axes along
+which they organise. We then turn, in Section~\ref{sec:fixed}, to their
+limitations on a fixed, fully-labelled dataset and, in
+Section~\ref{sec:challenges}, to the challenges they share.
 
 \subsection{Families of Selection Strategies}
 \label{sec:families}
@@ -216,36 +217,37 @@ where the model is weak, with uncertainty-based active learning, but operates,
 like curriculum and importance sampling, entirely within a dataset that is
 already labelled.
 
-\subsection{Selection within a Fixed, Fully-Labelled Dataset}
+\subsection{Limitations in Industry Settings}
 \label{sec:fixed}
 
-The industrial setting that motivates this paper is a classical supervised one: a
-single, limited, fully-labelled dataset is fixed before training begins, and no
-mechanism exists to obtain further labels. Several of the strategies above lose
-their footing under exactly these conditions. Active learning is the clearest
-case, because its defining operation, querying an oracle for the label of a
-chosen unlabelled point, is unavailable when every example is already labelled
-and no unlabelled pool remains; its informativeness criteria retain conceptual
-value, but its acquisition loop cannot run~\cite{settles2009,farquhar2021}. Data
-pruning and core-set selection face the opposite problem: they are designed to
-\emph{remove} data, and their benefit is realised only when the dataset is large
-and redundant~\cite{sorscher2022}, whereas a limited dataset offers little
-redundancy to discard and pruning it further can only reduce the information
-available. Curriculum and self-paced learning do apply, since they merely
-re-order fixed data, but re-ordering alone does not create new information; when
-the dataset is small the model eventually sees every example, and changing the
-schedule affects the optimisation path more than the amount that can ultimately
-be learnt~\cite{bengio2009,kumar2010}. Hard-example mining and importance
-sampling likewise apply and can improve sample efficiency, yet they identify
-hardness at the level of individual points and, on a small fixed dataset, risk
-repeatedly emphasising the same handful of high-loss examples, some of which may
-be mislabelled or anomalous rather than genuinely
-informative~\cite{shrivastava2016,mindermann2022}. What is missing across these
-methods, for the fixed-dataset case, is a strategy that neither assumes new
-labels nor discards data, but instead decides, among the labelled data already
-held, which examples to emphasise on the basis of where the model as a whole is
-failing rather than which isolated points happen to have high loss. This is the
-gap the weakspot-guided approach is designed to fill.
+The setting that motivates this paper is the one that prevails in industry rather
+than on benchmarks: a single, limited, fully-labelled dataset is fixed before
+training begins, and acquiring further labelled data is expensive, restricted for
+privacy or regulatory reasons, or physically infeasible. Judged against this
+setting, several of the strategies above lose their footing. Active learning is
+the clearest case, because its defining operation, querying an oracle for the
+label of a chosen unlabelled point, presupposes both an unlabelled pool and an
+affordable labelling channel, neither of which exists once the dataset is fixed
+and fully labelled; its informativeness criteria remain conceptually valuable, but
+its acquisition loop cannot run~\cite{settles2009,farquhar2021}. Data pruning and
+core-set selection face the opposite problem: they are designed to \emph{remove}
+data and pay off only when the dataset is large and
+redundant~\cite{sorscher2022}, whereas an industrial dataset is typically small
+enough that discarding data destroys information the model can ill afford to lose.
+Curriculum and self-paced learning do apply, since they merely re-order fixed
+data, but re-ordering alone creates no new information; on a small dataset the
+model soon sees every example, and the schedule affects the optimisation path more
+than the ceiling of what can ultimately be learnt~\cite{bengio2009,kumar2010}.
+Hard-example mining and importance sampling likewise apply and can improve sample
+efficiency, yet they score individual points and, on a small fixed dataset, tend
+to re-emphasise the same handful of high-loss examples, some of which are
+mislabelled or anomalous rather than genuinely
+informative~\cite{shrivastava2016,mindermann2022}. What no existing family
+provides, for the industrial case, is a strategy that neither assumes new labels
+nor discards data, but instead decides, among the labelled data already held,
+which examples to emphasise on the basis of where the model as a whole is failing
+rather than which isolated points happen to have high loss. This is the gap the
+weakspot-guided approach is designed to fill.
 
 \subsection{Challenges of Data-Selective Training}
 \label{sec:challenges}
@@ -346,16 +348,27 @@ extreme-value statistics, alongside the smoother surface estimators that describ
 the surrounding landscape~\cite{weakspotprior}.
 
 Our contribution is to close the loop between identifying a weakspot and
-correcting it. The method executes six stages. An initial model is first trained
-on the available data. It is then evaluated on a sample of the input space,
-yielding the error distribution described above. From the extrema of that
-distribution a weakspot is identified. New labelled data are selected in the
-neighbourhood of the identified weakspot. The model is retrained on the selected
-data. Finally it is re-evaluated, so that the effect of the selection can be
-measured against the model before it. In principle the identify--select--retrain
-cycle may be repeated as the model's weak region migrates; in this study we
-analyse a single round in order to isolate the effect of one targeted selection
-from the confounding effects of iteration.
+correcting it. The method runs as a sequence of eight distinct stages:
+\begin{enumerate}
+  \item \textbf{Setup} --- assemble the available dataset, optionally inducing a
+    weakspot by withholding data from a chosen region.
+  \item \textbf{Training} --- train an initial model on the assembled data.
+  \item \textbf{Evaluation} --- evaluate the model on a sample of the input space
+    and record its error at every point, yielding the error distribution.
+  \item \textbf{Weakspot identification} --- locate the weakspot from the extrema
+    of that error distribution.
+  \item \textbf{Data selection} --- draw new labelled points in the neighbourhood
+    of the identified weakspot.
+  \item \textbf{Retraining} --- retrain the model on the selected data.
+  \item \textbf{Re-evaluation} --- evaluate the retrained model on the same
+    sample.
+  \item \textbf{Overview} --- compare the retrained model against the model before
+    selection and against the random baseline introduced below.
+\end{enumerate}
+In principle the evaluate--identify--select--retrain cycle (stages~3--6) may be
+repeated as the model's weak region migrates; in this study we analyse a single
+round in order to isolate the effect of one targeted selection from the
+confounding effects of iteration.
 
 The stage that carries the method's essential freedom is the selection itself, and
 we deliberately do not add every point that falls inside the identified region.
@@ -392,90 +405,88 @@ efficacy the experiment is designed to quantify.
 Because adding almost any data may improve a model, a demonstration that
 weakspot-guided selection helps is meaningful only against a control that adds the
 same amount of data without targeting. We therefore pair every guided selection
-with a random baseline that draws the same number of new points uniformly at
-random, with no reference to the identified weakspot, and retrains under identical
-conditions. Comparing the two isolates the contribution of the targeting from the
-contribution of merely enlarging the training data, and it is this difference,
-rather than the improvement over the initial model alone, that measures the value
-of the weakspot-based selection.
+with a \emph{random baseline} that draws the same number of new points uniformly
+at random, with no reference to the identified weakspot, and retrains under
+identical conditions. This baseline stands in for unaltered training, the ordinary
+practice of adding data without regard to where the model is weak, and it is the
+reference against which the guided selection is judged. Comparing the two isolates
+the contribution of the targeting from the contribution of merely enlarging the
+training data, and it is this difference, rather than the improvement over the
+initial model alone, that measures the value of the weakspot-based selection.
 
 % =============================================================================
 \section{Experimental Setup}
 \label{sec:setup}
 
-We evaluate the method in a controlled synthetic setting in which the correct
-answer is known in advance, reusing the ground-truth construction of our previous
-work~\cite{weakspotprior}. The target function is a sum of Gaussian bumps on the
-unit square, from which labelled samples are drawn with additive noise on the
-labels. Because the function is known analytically, any input can be labelled on
-demand and the model's true error can be computed exactly at any point, which is
-precisely what makes an honest before-and-after comparison of a selection strategy
-possible. Throughout, the regression model is a multilayer perceptron of fixed
-architecture, and noise is added only to the training and selected labels; the
-evaluation set is labelled with the noiseless ground truth, so that the measured
-error reflects genuine model failure rather than label noise.
+\subsection{Task and Data}
+We evaluate the method on a controlled synthetic regression task with known ground
+truth, which is what makes an honest before-and-after comparison of a selection
+strategy possible. The target is a sum of Gaussian bumps on the unit square;
+labelled samples are drawn from it, and Gaussian noise is added to the training and
+selected labels only, so that the evaluation error reflects genuine model failure
+rather than label noise. Because the function is known analytically, any input can
+be labelled on demand and the model's true error measured exactly. The regression
+model is a multilayer perceptron of fixed architecture throughout.
 
-The experiment instantiates the stages of Section~\ref{sec:approach}, preceded by
-a data-setup stage and accompanied throughout by the random baseline. In the
-\emph{setup} stage a dataset is drawn from the
-landscape and, optionally, a weakspot is induced by withholding every training
-point within a chosen radius of a centre, so that a region of known location and
-size is deliberately starved of data. In the \emph{training} stage the model is
-fit to the retained points for a controlled number of iterations. In the
-\emph{evaluation} stage it is scored on a fresh uniform sample of the landscape,
-which stands in for the deployment distribution, and its per-point absolute errors
-are recorded. The \emph{weakspot-identification} stage applies a detector to this
-error sample and extracts a parametric weakspot from the surface's extrema. The
-\emph{selection} stage draws new labelled points from a candidate pool according to
-the Gaussian selection kernel centred on the identified weakspot, and a matching
-set of uniformly random points is drawn for the baseline. In the \emph{retraining}
-stage a fresh model is trained on the selected points alone, and in the
-\emph{re-evaluation} stage it is scored on the same evaluation sample, as is the
-baseline model, so that guided and unguided selection are compared under identical
-conditions. Training the retrained model on the selected points alone, rather than
-on their union with the original data, makes the experiment a stringent test: the
-model must reconstruct the landscape from the newly chosen data, so an
-over-concentrated selection is penalised precisely through the forgetting it
-induces.
+\subsection{Pipeline Instantiation}
+The experiment realises the eight stages of Section~\ref{sec:approach} directly, so
+we state here only the concrete choices rather than repeating the procedure. The
+\emph{setup} stage draws the dataset and, when a weakspot is required, induces it by
+withholding every point within a chosen radius of a centre. \emph{Training} and
+\emph{retraining} fit the multilayer perceptron for a set number of iterations, the
+latter on the selected points alone, so that an over-concentrated selection is
+penalised through the forgetting it induces. \emph{Evaluation} and
+\emph{re-evaluation} score the model on a fresh uniform sample of the landscape,
+which stands in for the deployment distribution. The \emph{weakspot-identification}
+stage applies one of the detection methods, taken unchanged from our previous
+work~\cite{weakspotprior}\todo{reference the previous weakspot-identification
+paper}, and \emph{data selection} draws new points from a candidate pool through the
+Gaussian selection kernel, with a matched uniform draw for the baseline. The
+\emph{overview} stage compares the initial, guided, and baseline models.
+\todo{Add a schematic of the eight-stage pipeline as a figure here.}
 
-\todo{Add a schematic of the identify--select--retrain pipeline (the seven stages)
-as a figure here.}
-
+\subsection{Swept Parameters}
 To map the conditions under which the approach helps, we sweep the experiment over
-the degrees of freedom introduced above and over the properties of the data. On
-the data side we vary the function complexity, through the number of Gaussian
-bumps, the standard deviation of the label noise, the size of the available
-dataset, and the strength of a covariate distribution shift that concentrates the
-training inputs in one region and leaves the remainder under-sampled. On the
-weakspot side we vary the radius of the induced gap, and include a radius of zero
-that induces no gap at all, so that the method is tested both on models with a
-deliberately created weak region and on models whose weakness is purely emergent.
-On the model side we vary the initial training time, and hence the reliability of
-the diagnosis, together with the retraining time. On the selection side we vary the
-variance of the selection kernel, the number of points added, and the size of the
-candidate pool. Every configuration is run against all of the detection methods, so
-that the choice of detector is itself a swept factor rather than a fixed design
-decision.
+the factors listed in Table~\ref{tab:sweep}, grouped by the stage to which each
+belongs; their motivation was given in Section~\ref{sec:approach}. The gap radius
+includes the value zero, which induces no weakspot at all, so that the method is
+tested both on a deliberately created weak region and on weakness that is purely
+emergent. Every configuration is run against all detection methods, so the detector
+is itself a swept factor. The sweep is executed as a single resumable batch that
+records one row per detector per configuration and appends results incrementally,
+so the grid can be extended without recomputation.
 
-Each configuration is scored along two complementary axes. The first is the
-model's predictive error on the evaluation set, measured before selection, after
-the guided retraining, and after the baseline retraining, and measured separately
-inside and outside the induced region when one is present, so that a local
-improvement can be distinguished from a global one. The second axis reuses the
-weakspot-identification metrics of our previous work~\cite{weakspotprior}: the
-distance between the detected and the true weakspot centre, which measures how
-accurately the weak region is located, and the intersection-over-union of the
-detected and induced regions, which measures how accurately its extent is
-described. Reporting the guided and baseline outcomes alongside these
-identification metrics lets the analysis attribute any change in model quality
-either to the accuracy of the weakspot identification or to the selection that acts
-upon it.
+\begin{table}[t]
+\centering
+\caption{Factors varied in the sweep, grouped by the pipeline stage to which each
+belongs. Motivation is given in Section~\ref{sec:approach}.}
+\label{tab:sweep}
+\begin{tabular}{@{}l p{0.60\columnwidth}@{}}
+\toprule
+\textbf{Stage} & \textbf{Varied factors} \\
+\midrule
+Setup / data & function complexity, label-noise level, dataset size,
+               distribution-shift strength, induced-gap radius ($0 =$ no weakspot) \\
+Training     & initial training time \\
+Weakspot ID  & detection method (all detectors) \\
+Selection    & selection-kernel variance, number of points added, candidate-pool size \\
+Retraining   & retraining time \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The complete sweep is run as a single resumable batch that records one row per
-detector for every configuration and appends its results incrementally, so that the
-grid can be extended without recomputation. In its default instantiation it spans
-several thousand configurations across the factors above, each evaluated against
-every detector, which furnishes the aggregate view analysed in
+\subsection{Evaluation Metrics}
+Model performance is measured by the \emph{mean absolute error} (MAE) of the
+predictions on the held-out evaluation set against the noiseless ground truth. We
+report the MAE of the initial model, of the guided-retrained model, and of the
+random baseline, so that the value of the targeting is read directly as the
+difference in MAE between the guided and baseline models. To distinguish a local
+from a global effect, the same error is additionally averaged inside and outside
+the induced weakspot whenever one is present. The accuracy of the weakspot
+identification itself is assessed separately, with the two metrics of our previous
+work~\cite{weakspotprior}: the centroid distance between the detected and the true
+weakspot, and the intersection-over-union of their extents. These per-configuration
+scores, each recorded for every detector, furnish the aggregate view analysed in
 Section~\ref{sec:discussion}.
 
 % =============================================================================
