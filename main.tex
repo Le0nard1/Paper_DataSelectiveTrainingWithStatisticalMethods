@@ -521,31 +521,55 @@ in $64\%$ of the individual seed--detector runs; inside the induced weakspot the
 effect was larger still, the mean error falling from $3.12$ to $1.25$ against $1.68$
 for the baseline.
 
+Read against Section~\ref{sec:challenges}, these outcomes are not arbitrary. The
+regimes in which guidance fails are exactly the failure modes anticipated there,
+over-concentration that causes catastrophic forgetting and a diagnosis made against a
+model too mature or too immature to possess an exploitable weak region, and the
+remainder of this section isolates each dominant parameter in order to trace the
+effect of a specific challenge and to test whether the design choice meant to counter
+it works.
+
 \subsection{Which Parameters Decide the Outcome}
 \label{sec:sensitivity}
-The swept factors do not matter equally. Fig.~\ref{fig:effect} isolates each
-parameter around the operating point and measures the span of the whole-area
-advantage $\Delta = \mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ that
-it induces when varied alone. Four dimensions dominate. The \emph{selection-kernel
-width} is the single most decisive, swinging the advantage by $0.25$ in MAE across
-its range and, on its own, turning a clear win into a clear loss; the \emph{number
-of curated points added}, the \emph{initial training time} that sets the model state
-at which the weakspot is diagnosed, and the \emph{induced gap size} each move it by
-roughly $0.18$ to $0.20$. These are the consequential dimensions of the method, and
-they map directly onto the challenges of Section~\ref{sec:challenges}: the model
-state governs whether the diagnosis is trustworthy, the cold-start concern, while
-the kernel width and the amount of data added govern the focus--coverage trade-off.
-The rehearsal mix shows a smaller isolated span at this wide-kernel operating point,
-but that understates its role; as the next subsection shows, it becomes decisive
-precisely when the kernel is narrow, because it is then the only remaining source of
-coverage.
+The swept factors do not matter equally. Fig.~\ref{fig:sensitivity} ranks all ten of
+them by the main effect each exerts on the whole-area advantage
+$\Delta = \mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$; for every
+parameter the bar spans the range of the mean advantage across its levels, averaged
+over the rest of the sweep. Two features stand out. First, almost every bar lies
+entirely to the left of zero, a restatement in sensitivity terms of
+Section~\ref{sec:broadsweep}: averaged over the space, guidance is usually worse than
+random, and no single parameter on its own carries the average across the break-even
+line. Second, the parameters are sharply ordered. The \emph{rehearsal mix ratio} is
+by a wide margin the most influential, spanning $0.45$ in MAE and reaching the
+break-even line only at its coverage-preserving extreme; the \emph{selection-kernel
+width} follows at $0.22$. These two, which both govern the focus--coverage balance,
+dominate every other factor. A middle tier, each spanning roughly $0.08$ to $0.11$,
+comprises the amount of data added and the two controls of the initial model state,
+its training time and its training-set size. The remaining factors, the function
+complexity, the selection strategy, the gap size, the label-noise level and the
+retraining time, each move the advantage by less than $0.04$ and are, over this grid,
+near-inert.
 
-\subsection{Focus versus Coverage: The Rehearsal Mix}
+This ordering maps directly onto the challenges of Section~\ref{sec:challenges}. The
+two dominant parameters are precisely the controls of catastrophic forgetting: they
+set how much of the training signal is poured into the weak region rather than spread
+for coverage. The model-state parameters that follow are the controls of the
+cold-start concern, governing whether the weakspot is diagnosed against a model mature
+enough to be trustworthy yet immature enough to have a genuine weak region. That the
+factors describing the task itself, its complexity, noise and gap size, matter least
+is reassuring, since it indicates that the method's success is decided by how it is
+configured rather than by the particular problem it is applied to. The two
+subsections that follow isolate the dominant mechanisms in turn.
+
+\subsection{Focus versus Coverage: Countering Catastrophic Forgetting}
 \label{sec:mix}
-The tension identified in Section~\ref{sec:challenges}, between concentrating data on
-the weak region and preserving coverage of the rest of the input space, is governed
-by two interchangeable controls, and Fig.~\ref{fig:isolation} isolates each in turn
-over $50$ random seeds. The left panel fixes a deliberately narrow selection kernel
+The broad sweep singles out catastrophic forgetting (Section~\ref{sec:challenges}) as
+the dominant risk, and the method's two coverage controls, the rehearsal mix and the
+kernel width, were introduced precisely to counter it; we isolate each to test whether
+they do. The underlying tension, between concentrating data on the weak region and
+preserving coverage of the rest of the input space, is governed by these two
+interchangeable controls, and Fig.~\ref{fig:isolation} isolates each in turn over $50$
+random seeds. The left panel fixes a deliberately narrow selection kernel
 ($\sigma=0.1$), so that the rehearsal mix $\alpha$ is the sole route to coverage, and
 sweeps it from pure uniform rehearsal ($\alpha=0$) to pure weakspot focus
 ($\alpha=1$). The resulting curve traces the paper's argument in a single sweep. At
@@ -572,16 +596,55 @@ interchangeably, and it delimits the safe operating region for the method as any
 combination that keeps a non-trivial fraction of the added data spread across the
 input space.
 
+The joint behaviour of the two coverage controls, and their interaction with the
+model state, is shown directly in Fig.~\ref{fig:interactions}. The left panel varies
+the kernel width against the rehearsal mix at the operating point: catastrophic
+forgetting (red) is confined to a single corner, the narrow-kernel, high-mix region in
+which both coverage controls are simultaneously disengaged, while the rest of the plane
+stays green, confirming that either control alone is enough to prevent it. The right
+panel varies the rehearsal mix against the initial training time and exposes the
+cold-start challenge of Section~\ref{sec:challenges} in the same picture: the guided
+advantage is largest for the most undertrained models and decays monotonically as the
+initial model is trained longer, until beyond roughly fifty iterations a well-fitted
+model has no exploitable weak region and guidance and random selection converge. The
+safe operating region is therefore the intersection of sufficient coverage with a
+model that is trained enough to be diagnosable but not so well trained that no weak
+region remains.
+
+\subsection{Isolating the Identification Method}
+\label{sec:detector}
+The analyses so far hold the weakspot detector fixed; the final experiment instead
+fixes every other factor at the operating point and varies the identification method
+across all seventeen detectors of the companion work~\cite{weakspotprior}, each
+sharing the same initial model, induced gap and candidate pool for a clean head-to-head
+over twenty seeds. Two findings emerge from Fig.~\ref{fig:detector}. First, in this
+favourable regime the method is robust to the choice of detector: every one of the
+seventeen improves on the random baseline, both over the whole area and inside the
+weakspot. Second, the size of that improvement varies almost tenfold, from $0.157$ in
+whole-area MAE for the strongest, quantile regression, down to $0.016$ for the weakest.
+The weakest detectors are exactly those that fail to localise the gap, returning a
+centroid distance of nearly $0.5$ and an intersection-over-union of essentially zero;
+their guided selection is aimed at the wrong place and retains an advantage only
+through the uniform rehearsal it still contains. This is the fourth challenge of
+Section~\ref{sec:challenges} in operation, that a selection rule is only as trustworthy
+as the region it identifies: accurate localisation feeds directly through to training
+benefit, and a mislocated weakspot squanders most of it. The ranking also indicates
+that raw geometric overlap is not the whole story, since quantile regression attains
+the largest training benefit with only a moderate overlap score, which suggests that
+placing the selection mass in the right place matters more for retraining than
+capturing the exact extent of the region.
+
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig_effect_sizes.png}
-\caption{Effect size of each parameter, isolated around the operating point of
-Section~\ref{sec:broadsweep}. Each bar spans the whole-area advantage
-$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ (positive means
-guided is better) as the parameter is varied alone; the green and red markers denote
-its best and worst settings. Selection-kernel width, the amount of data added, the
-initial training time, and the induced gap size are the decisive dimensions.}
-\label{fig:effect}
+\includegraphics[width=\columnwidth]{figures/fig_global_sensitivity.png}
+\caption{Sensitivity of every swept parameter, computed from the broad sweep. Each bar
+spans the mean whole-area advantage
+$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ across that
+parameter's levels (green and red mark its best and worst settings); positive is a
+guided win. The rehearsal mix ratio and the selection-kernel width dominate, while the
+task-describing factors are near-inert. That almost every bar lies left of zero is the
+sensitivity-space restatement that guidance helps only in a specific regime.}
+\label{fig:sensitivity}
 \end{figure}
 
 \begin{figure*}[t]
@@ -596,6 +659,29 @@ identically from coverage (left, $\approx$ baseline) to pure focus (right,
 catastrophic forgetting), with an interior region where guided selection beats the
 baseline. Shaded bands are $95\%$ confidence intervals.}
 \label{fig:isolation}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_2d_interactions.png}
+\caption{Two-way interactions at the operating point (mean whole-area advantage; green
+$=$ guided beats random, red $=$ worse). \emph{Left:} kernel width against rehearsal
+mix; forgetting is confined to the narrow-kernel, high-mix corner where both coverage
+controls are disengaged. \emph{Right:} rehearsal mix against initial training time; the
+guided advantage is largest for undertrained models and vanishes as the initial model
+is trained longer, the cold-start effect of Section~\ref{sec:challenges}.}
+\label{fig:interactions}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_best_vary_detector.png}
+\caption{Identification method isolated at the operating point: whole-area (left) and
+in-weakspot (right) advantage over the random baseline for all seventeen detectors of
+the companion work, sharing one initial model over twenty seeds. Every detector beats
+random, but the margin varies almost tenfold; the weakest are precisely those that fail
+to localise the gap (centroid distance $\approx0.5$, IoU $\approx0$).}
+\label{fig:detector}
 \end{figure*}
 
 % =============================================================================
