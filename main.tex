@@ -59,63 +59,48 @@ trained on a large dataset and still learn slowly, because the examples that
 would most improve it are rare relative to the many that merely reconfirm what it
 already represents.
 
-Data and compute are, in practice, always limited resources, and the imbalance
-is most acute in industrial settings. Whereas academic benchmarks often assume a
-large, curated datapool, real deployments frequently operate under tight
-constraints: labelled data may be expensive to annotate, protected for privacy
-or regulatory reasons, or simply infeasible to obtain. Under such constraints the aggregate size of a
-dataset is a poor proxy for its value, and the ability to extract the most
-learning from each available example, rather than simply to acquire more
-examples, becomes a crucial factor on model quality.
-
-The machine-learning literature has long recognised that not every example is
-equally useful, and the broad field of selective data sampling has repeatedly
-shown that training on a well-chosen subset can match or exceed training on the
-full dataset at a fraction of the cost~\cite{settles2009,sorscher2022,katharopoulos2018}.
-Active learning, curriculum learning, hard-example mining and related methods all
-exploit this observation in different ways. Their industrial applicability is,
-however, narrower than their success on benchmarks suggests: each presupposes a
-resource the industrial setting lacks, whether an source for fresh labels, a large
-and redundant dataset to prune, or simply enough data for the model to judge
-informativeness reliably. As a result, the strategies proven most effective in
-principle map poorly onto the fixed-budget, fully-labelled conditions that
-dominate industrial practice, as Section~\ref{sec:strategies} sets out in detail.
+Data and compute are, in practice, always limited, and the imbalance is most acute in
+industrial settings, where labelled data may be expensive to annotate, protected for
+privacy or regulatory reasons, or simply infeasible to obtain. Under such constraints
+the aggregate size of a dataset is a poor proxy for its value, and the ability to
+extract the most learning from each available example, rather than to acquire more,
+becomes decisive for model quality. The machine-learning literature has long recognised
+that not every example is equally useful, and selective data sampling, through active
+learning, curriculum learning, hard-example mining and related methods, has repeatedly
+shown that a well-chosen subset can match or exceed the full dataset at a fraction of
+the cost~\cite{settles2009,sorscher2022,katharopoulos2018}. Their industrial
+applicability is, however, narrower than their benchmark success suggests: each
+presupposes a resource the industrial setting lacks, whether a source of fresh labels, a
+large and redundant dataset to prune, or simply enough data to judge informativeness
+reliably, so that the strategies proven most effective in principle map poorly onto the
+fixed-budget, fully-labelled conditions that dominate industrial practice, as
+Section~\ref{sec:strategies} sets out in detail.
 
 We therefore propose a data-selective training strategy built on statistical
 weakspot identification. A weakspot is a compact region of the input space in
 which a trained model performs poorly, often because that region was
-under-represented in the data the model has seen so far~\cite{ovadia2019}. Our
+under-represented in the data seen so far~\cite{ovadia2019}. Our
 previous work developed statistical methods that locate such regions in a trained
 regression model from its error distribution alone, without access to ground
-truth~\cite{weakspotprior}. The central idea of the present paper is to close the
+truth~\cite{weakspotprior}. The present paper closes the
 loop: rather than treating weakspot identification only as a post-hoc diagnostic,
-we use it to steer training, directing supervision preferentially to the regions
-where the model currently knows the least. This is an intuitive principle, namely
-to spend the next unit of data or compute where the model is weakest, and it fits
-the fixed-dataset setting naturally, because it selects among data the model
+we use it to steer training, spending the next unit of data where the model is weakest.
+This fits the fixed-dataset setting naturally, because it selects among data the model
 already possesses rather than assuming an external source.
 
-An intuitive principle is not, by itself, evidence. The efficacy of
-weakspot-guided training must be demonstrated rather than assumed, and its
-behaviour is unlikely to be uniform. Because a weakspot is defined relative to
-the model's behaviour, the value of any selection depends on the state
-of the model at the moment the selection is made. The method also introduces
-additional parameters, among them how sharply to concentrate the selection on the
-identified region, how much data to add, and how long to retrain, whose settings
-may decide whether it helps or harms. A responsible
-evaluation must therefore establish not only whether the approach works on
-average but also how it depends on the training state and on these parameters,
-and must consequently identify the conditions under which it is most, and least,
-effective.
-
-To this end we build a training pipeline on top of the weakspot-identification
-methods of our previous work~\cite{weakspotprior} and compare it directly against
-conventional training that draws data without regard to the model's weak regions.
-We construct a controlled experimental setup in which the effect of
-weakspot-guided selection can be isolated, measured against direct-training
-baselines, and analysed across the model states and parameters identified above,
-so that any advantage, or its absence, can be attributed to the selection
-strategy rather than to incidental differences in the setup.
+An intuitive principle is not, by itself, evidence, and the behaviour of
+weakspot-guided training is unlikely to be uniform. Because a weakspot is defined
+relative to the model's behaviour, the value of any selection depends on the state of
+the model when the selection is made; the method also introduces further parameters,
+among them how sharply to concentrate the selection, how much data to add, and how long
+to retrain, whose settings may decide whether it helps or harms. A responsible
+evaluation must therefore establish not only whether the approach works on average but
+how it depends on the training state and on these parameters, and identify the
+conditions under which it is most, and least, effective. To this end we build a training
+pipeline on the weakspot-identification methods of our previous work~\cite{weakspotprior}
+and compare it, in a controlled setup that isolates the effect of guided selection,
+against conventional training that draws data without regard to the model's weak
+regions.
 
 In summary, this paper makes three contributions. First, it reframes the
 selection of informative data as the selection of data inside a model's
@@ -487,10 +472,8 @@ scores, each recorded for every detector, furnish the aggregate view analysed in
 Section~\ref{sec:discussion}.
 
 % =============================================================================
-\section{Experiments and Analysis}
+\section{The Broad Sweep: Weakspot Guidance Is Not Free}
 \label{sec:experiments}
-
-\subsection{A Broad Sweep: Weakspot Guidance Is Not Free}
 \label{sec:broadsweep}
 We first map the method's behaviour across the full factor grid of
 Table~\ref{tab:sweep}, a total of $324{,}000$ configurations evaluated against each
@@ -500,9 +483,8 @@ the random baseline over the whole evaluation area in fewer than one configurati
 in three ($31.7\%$), and the median configuration was in fact marginally worse than
 random ($\Delta\mathrm{MAE}=+0.027$). Weakspot-guided training is therefore not a
 universally safe substitute for uniform sampling: whether it helps or harms is
-decided by how it is configured, and a careless instantiation spends its data
-budget worse than adding points at random. This conditional character, rather than
-any average effect, is the finding that governs the rest of the section.
+decided by how it is configured, not by the problem it is applied to, and a careless
+instantiation spends its data budget worse than adding points at random.
 
 Where guidance did win, the successful configurations were far from uniformly
 distributed in the parameter space. Improvements concentrated on \emph{undertrained}
@@ -521,26 +503,15 @@ in $64\%$ of the individual seed--detector runs; inside the induced weakspot the
 effect was larger still, the mean error falling from $3.12$ to $1.25$ against $1.68$
 for the baseline.
 
-Read against Section~\ref{sec:challenges}, these outcomes are not arbitrary. The
-regimes in which guidance fails are exactly the failure modes anticipated there,
-over-concentration that causes catastrophic forgetting and a diagnosis made against a
-model too mature or too immature to possess an exploitable weak region, and the
-remainder of this section isolates each dominant parameter in order to trace the
-effect of a specific challenge and to test whether the design choice meant to counter
-it works.
-
-\subsection{Which Parameters Decide the Outcome}
-\label{sec:sensitivity}
-The swept factors do not matter equally. Fig.~\ref{fig:sensitivity} ranks all ten of
-them by the main effect each exerts on the whole-area advantage
-$\Delta = \mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$; for every
-parameter the bar spans the range of the mean advantage across its levels, averaged
-over the rest of the sweep. Two features stand out. First, almost every bar lies
-entirely to the left of zero, a restatement in sensitivity terms of
-Section~\ref{sec:broadsweep}: averaged over the space, guidance is usually worse than
-random, and no single parameter on its own carries the average across the break-even
-line. Second, the parameters are sharply ordered. The \emph{rehearsal mix ratio} is
-by a wide margin the most influential, spanning $0.45$ in MAE and reaching the
+The map in Fig.~\ref{fig:sensitivity} explains this conditional character. It ranks all
+ten swept factors by the whole-area advantage
+$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ each induces, with one
+row per factor and one cell per level, the level value printed above and the mean
+advantage below. Two features stand out. First, almost every cell is red: averaged over
+the grid guidance is usually worse than random, and no single parameter on its own
+carries the average across break-even. Second, the parameters are sharply ordered.
+The \emph{rehearsal mix ratio} is by a wide margin the most influential, spanning
+$0.45$ in MAE and reaching the
 break-even line only at its coverage-preserving extreme; the \emph{selection-kernel
 width} follows at $0.22$. These two, which both govern the focus--coverage balance,
 dominate every other factor. A middle tier, each spanning roughly $0.08$ to $0.11$,
@@ -561,7 +532,7 @@ is reassuring, since it indicates that the method's success is decided by how it
 configured rather than by the particular problem it is applied to. The two
 subsections that follow isolate the dominant mechanisms in turn.
 
-\subsection{Focus versus Coverage: Countering Catastrophic Forgetting}
+\section{The Dataset Mix: Countering Catastrophic Forgetting}
 \label{sec:mix}
 The broad sweep singles out catastrophic forgetting (Section~\ref{sec:challenges}) as
 the dominant risk, and the method's two coverage controls, the rehearsal mix and the
@@ -596,22 +567,7 @@ interchangeably, and it delimits the safe operating region for the method as any
 combination that keeps a non-trivial fraction of the added data spread across the
 input space.
 
-The joint behaviour of the two coverage controls, and their interaction with the
-model state, is shown directly in Fig.~\ref{fig:interactions}. The left panel varies
-the kernel width against the rehearsal mix at the operating point: catastrophic
-forgetting (red) is confined to a single corner, the narrow-kernel, high-mix region in
-which both coverage controls are simultaneously disengaged, while the rest of the plane
-stays green, confirming that either control alone is enough to prevent it. The right
-panel varies the rehearsal mix against the initial training time and exposes the
-cold-start challenge of Section~\ref{sec:challenges} in the same picture: the guided
-advantage is largest for the most undertrained models and decays monotonically as the
-initial model is trained longer, until beyond roughly fifty iterations a well-fitted
-model has no exploitable weak region and guidance and random selection converge. The
-safe operating region is therefore the intersection of sufficient coverage with a
-model that is trained enough to be diagnosable but not so well trained that no weak
-region remains.
-
-\subsection{Isolating the Identification Method}
+\section{The Identification Method}
 \label{sec:detector}
 The analyses so far hold the weakspot detector fixed; the final experiment instead
 fixes every other factor at the operating point and varies the identification method
@@ -634,18 +590,19 @@ the largest training benefit with only a moderate overlap score, which suggests 
 placing the selection mass in the right place matters more for retraining than
 capturing the exact extent of the region.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig_global_sensitivity.png}
-\caption{Sensitivity of every swept parameter, computed from the broad sweep. Each bar
-spans the mean whole-area advantage
-$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ across that
-parameter's levels (green and red mark its best and worst settings); positive is a
-guided win. The rehearsal mix ratio and the selection-kernel width dominate, while the
-task-describing factors are near-inert. That almost every bar lies left of zero is the
-sensitivity-space restatement that guidance helps only in a specific regime.}
+\includegraphics[width=\textwidth]{figures/fig_sensitivity_heatmap.png}
+\caption{Influence of every swept parameter over the broad sweep: one row per factor and
+one cell per level, coloured by the mean whole-area advantage
+$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ at that level (green
+$=$ guided wins, red $=$ guided loses; the level value is printed above each cell and
+the mean advantage below). Rows are ordered by influence: the rehearsal mix ratio and
+the selection-kernel width dominate, the data budget and the initial-model controls form
+a middle tier, and the task-describing factors are near-inert. That almost every cell is
+red restates that guidance helps only in a specific regime.}
 \label{fig:sensitivity}
-\end{figure}
+\end{figure*}
 
 \begin{figure*}[t]
 \centering
@@ -659,18 +616,6 @@ identically from coverage (left, $\approx$ baseline) to pure focus (right,
 catastrophic forgetting), with an interior region where guided selection beats the
 baseline. Shaded bands are $95\%$ confidence intervals.}
 \label{fig:isolation}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_2d_interactions.png}
-\caption{Two-way interactions at the operating point (mean whole-area advantage; green
-$=$ guided beats random, red $=$ worse). \emph{Left:} kernel width against rehearsal
-mix; forgetting is confined to the narrow-kernel, high-mix corner where both coverage
-controls are disengaged. \emph{Right:} rehearsal mix against initial training time; the
-guided advantage is largest for undertrained models and vanishes as the initial model
-is trained longer, the cold-start effect of Section~\ref{sec:challenges}.}
-\label{fig:interactions}
 \end{figure*}
 
 \begin{figure*}[t]
