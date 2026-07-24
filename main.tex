@@ -116,8 +116,12 @@ training, clarifies how they relate and differ, explains why they are difficult
 to apply to a fixed, fully-labelled dataset, and sets out the general challenges
 any such method must confront. Section~\ref{sec:approach} presents our
 weakspot-based selective-training method and the degrees of freedom it exposes,
-and Section~\ref{sec:setup} details the experimental setup and the factors under observation. Section~\ref{sec:experiments} reports the experiments and analyses the
-results, and Section~\ref{sec:discussion} interprets their broader implications
+and Section~\ref{sec:setup} details the experimental setup and the factors under
+observation. The experiments then proceed in three stages: Section~\ref{sec:broadsweep}
+maps with a broad sweep where weakspot guidance helps and where it harms and fixes the
+operating point, after which Section~\ref{sec:mix} isolates the coverage balance that
+governs catastrophic forgetting and Section~\ref{sec:detector} the choice of
+identification method. Section~\ref{sec:discussion} interprets the broader implications
 and limitations, before the Conclusion summarises the study.
 
 % =============================================================================
@@ -200,32 +204,38 @@ already labelled.
 \label{sec:fixed}
 
 The setting that motivates this paper is the one that prevails in industry rather
-than on benchmarks: a single, limited, fully-labelled dataset is fixed before
-training begins. Judged against this
-setting, several of the strategies above lose their footing. Active learning is
-the clearest case, because its defining operation, querying an oracle for the
-label of a chosen unlabelled point, presupposes both an unlabelled pool and an
-affordable labelling channel, neither of which exists once the dataset is fixed
-and fully labelled; its informativeness criteria remain conceptually valuable, but
-its acquisition loop cannot run~\cite{settles2009,farquhar2021}. Data pruning and
-core-set selection face the opposite problem: they are designed to \emph{remove}
-data and pay off only when the dataset is large and
-redundant~\cite{sorscher2022}, whereas an industrial dataset is typically small
-enough that discarding data destroys information the model can ill afford to lose.
-Curriculum and self-paced learning do apply, since they merely re-order fixed
-data, but re-ordering alone creates no new information; on a small dataset the
-model soon sees every example, and the schedule affects the optimisation path more
-than the ceiling of what can ultimately be learnt~\cite{bengio2009,kumar2010}.
-Hard-example mining and importance sampling likewise apply and can improve sample
-efficiency, yet they score individual points and, on a small fixed dataset, tend
-to re-emphasise the same handful of high-loss examples, some of which are
+than on benchmarks: a single, limited, fully-labelled dataset is fixed before training
+begins, and the practitioner has only partial control over how it was acquired. Judged
+against this setting, several of the strategies above lose their footing. Active
+learning is the clearest case, because its defining operation, querying an oracle for
+the label of a chosen unlabelled point, presupposes both an unlabelled pool and an
+affordable labelling channel, neither of which exists once the dataset is fixed and
+fully labelled; and because the data-acquisition process is only partially under the
+practitioner's control, the specific examples its criterion asks for often cannot be
+obtained even in principle, so that its informativeness criteria remain conceptually
+valuable but its acquisition loop cannot run~\cite{settles2009,farquhar2021}. Curriculum
+and self-paced learning apply in principle, since they merely re-order fixed data, but
+they presuppose a reliable ordering of examples by difficulty, and in an industrial
+setting the nature of the problem is rarely understood well enough to score difficulty
+in that way; even where a schedule can be imposed, re-ordering alone creates no new
+information, and on a small dataset the model soon sees every example, so the schedule
+affects the optimisation path more than the ceiling of what can ultimately be
+learnt~\cite{bengio2009,kumar2010}. Data pruning and core-set selection point in the
+opposite direction, being designed to \emph{remove} data and paying off only when the
+dataset is large and redundant~\cite{sorscher2022}, whereas an industrial dataset is
+typically small enough that discarding data destroys information the model can ill
+afford to lose. Hard-example mining and importance sampling likewise apply and can
+improve sample efficiency, yet they score individual points and, on a small fixed
+dataset, tend to re-emphasise the same handful of high-loss examples, some of them
 mislabelled or anomalous rather than genuinely
-informative~\cite{shrivastava2016,mindermann2022}. What no existing family
-provides, for the industrial case, is a strategy that neither assumes new labels
-nor discards data, but instead decides, among the labelled data already held,
-which examples to emphasise on the basis of where the model as a whole is failing
-rather than which isolated points happen to have high loss. This is the gap the
-weakspot-guided approach is designed to fill.
+informative~\cite{shrivastava2016,mindermann2022}.
+
+What no existing family provides, for the industrial case, is a strategy that neither
+assumes new labels nor discards data, but instead \emph{focuses} training on the regions
+where the model as a whole is failing, drawn from the labelled data already held rather
+than from isolated points that happen to have high loss. This is the gap the
+weakspot-guided approach is designed to fill: it does not remove data, but concentrates
+supervision where the model is weakest.
 
 \subsection{Challenges of Data-Selective Training}
 \label{sec:challenges}
