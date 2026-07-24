@@ -491,7 +491,7 @@ in the pipeline order of Table~\ref{tab:sweep}. The full Cartesian product gives
 $324{,}000$ configurations, each evaluated against all five detectors.}
 \label{tab:grid}
 \small
-\begin{tabular}{@{}l l@{}}
+\begin{tabular}{@{}l p{0.58\columnwidth}@{}}
 \toprule
 \textbf{Factor} & \textbf{Swept values} \\
 \midrule
@@ -500,7 +500,9 @@ Label-noise level               & $0,\ 0.05,\ 0.1$ \\
 Initial training-set size       & $200,\ 400,\ 800,\ 1500$ \\
 Induced-gap radius              & $0,\ 0.12,\ 0.18$ \\
 Initial training time (it.)     & $10,\ 20,\ 50,\ 100,\ 200$ \\
-Detection method                & 5 detectors \\
+Detection method                & EVT\,$\times$\,GPR (geometric), kNN performance
+                                  mapping, peaks-over-threshold (EVT), GPR/kNN
+                                  (variance-weighted), RBF interpolation \\
 Selection-kernel width $\sigma$ & $0.05,\ 0.1,\ 0.2,\ 0.3,\ 0.5$ \\
 Points added                    & $100,\ 300,\ 500,\ 700$ \\
 Selection strategy              & distance, landscape, shape-aware \\
@@ -516,13 +518,16 @@ width}, the two controls of the balance between focusing data on the weak region
 preserving coverage of the rest, dominate every other factor, spanning $0.45$ and $0.22$
 in MAE; the initial-model state forms a middle tier, while the factors describing the
 task itself are near-inert. Guidance therefore wins only in a specific regime, an
-\emph{undertrained} initial model with enough coverage preserved, exemplified by the
-operating point of radius $0.12$, $12$ initial iterations, $\sigma=0.5$, mix $0.5$ and
-$100$ added points, which cuts the whole-area MAE from $0.95$ to $0.48$ against $0.57$
-for the matched baseline (a $16\%$ gain, winning $64\%$ of seed--detector runs) and the
-in-weakspot error from $3.12$ to $1.25$. Two dimensions therefore warrant closer study:
-the coverage balance that governs catastrophic forgetting, and the identification method
-itself; the next two sections take each in turn.
+\emph{undertrained} initial model with enough coverage preserved. We take the best such
+configuration as the \emph{operating point} for the remainder of the study: an induced
+gap of radius $0.12$, an initial model trained for $12$ iterations on $100$ points, a
+selection kernel of width $\sigma=0.5$, a rehearsal mix of $0.5$, and $100$ points added
+over $400$ retraining iterations. At this point guidance cuts the whole-area MAE from
+$0.95$ to $0.48$ against $0.57$ for the matched baseline (a $16\%$ gain, winning $64\%$
+of seed--detector runs) and the in-weakspot error from $3.12$ to $1.25$. Two dimensions
+warrant closer study, the coverage balance that governs catastrophic forgetting and the
+identification method itself, and the next two sections fix every other factor at this
+operating point to isolate each in turn.
 
 \begin{figure}[t]
 \centering
@@ -540,60 +545,48 @@ sensitivity-space restatement that guidance helps only in a specific regime.}
 \section{The Dataset Mix: Countering Catastrophic Forgetting}
 \label{sec:mix}
 The broad sweep singles out catastrophic forgetting (Section~\ref{sec:challenges}) as
-the dominant risk, and the method's two coverage controls, the rehearsal mix and the
-kernel width, were introduced precisely to counter it; we isolate each to test whether
-they do. The underlying tension, between concentrating data on the weak region and
-preserving coverage of the rest of the input space, is governed by these two
-interchangeable controls, and Fig.~\ref{fig:isolation} isolates each in turn over $50$
-random seeds. The left panel fixes a deliberately narrow selection kernel
-($\sigma=0.1$), so that the rehearsal mix $\alpha$ is the sole route to coverage, and
-sweeps it from pure uniform rehearsal ($\alpha=0$) to pure weakspot focus
-($\alpha=1$). The resulting curve traces the paper's argument in a single sweep. At
-$\alpha=0$ the guided selection is by construction identical in distribution to the
-random baseline, and the two coincide. As a little guidance is introduced,
-$\alpha\in[0.05,0.35]$, the guided model pulls below the baseline and wins: a modest
-bias towards the weak region helps. Past a crossover near $\alpha\approx0.4$ the
-balance inverts, and as $\alpha\to1$ the model, now trained almost entirely inside
-the pinpoint weakspot, forgets the rest of the space catastrophically, its
-whole-area error climbing above even that of the untrained initial model. The
-progression from parity, through advantage, to catastrophic forgetting is exactly
-the behaviour the challenge anticipates, and it makes explicit why the method must be
-prevented from over-concentrating.
+the dominant risk, and the two coverage controls, the rehearsal mix and the kernel
+width, were introduced to counter it. Fig.~\ref{fig:isolation} isolates each over $50$
+seeds. The left panel fixes a narrow kernel ($\sigma=0.1$) and sweeps the rehearsal mix
+$\alpha$ from pure uniform rehearsal ($\alpha=0$) to pure guided focus ($\alpha=1$). At
+$\alpha=0$ guided selection coincides with the random baseline by construction; for a
+modest bias ($\alpha\in[0.05,0.35]$) it pulls below the baseline and wins; and past a
+crossover near $\alpha\approx0.4$ the model, trained almost entirely inside the pinpoint
+weakspot, forgets the rest of the space catastrophically, its whole-area error rising
+above even that of the untrained initial model. This progression from parity through
+advantage to catastrophic forgetting is exactly what the challenge anticipates.
 
-The right panel shows that the kernel width is a second, independent route to the
-same effect: holding the selection purely guided ($\alpha=1$) and instead widening
-the kernel reproduces the identical arc in mirror image, a narrow kernel forgetting
-just as a high mix does, and a wide kernel converging back to the baseline just as
-$\alpha\to0$ does. The two mechanisms are thus substitutable, coverage being
-restored either by mixing in uniform rehearsal or by widening the kernel, and pure
-focus, reached by either route, forgets. This equivalence explains why the broad
-sweep of Section~\ref{sec:broadsweep} rewarded low mix \emph{or} wide kernels
-interchangeably, and it delimits the safe operating region for the method as any
-combination that keeps a non-trivial fraction of the added data spread across the
+The right panel shows the kernel width to be a second, substitutable route to the same
+effect: holding the selection purely guided ($\alpha=1$) and widening the kernel
+reproduces the arc in mirror image, a narrow kernel forgetting as a high mix does and a
+wide kernel converging back to the baseline. Coverage can thus be restored either by
+mixing in uniform rehearsal or by widening the kernel, which is why the broad sweep
+rewarded low mix \emph{or} wide kernels interchangeably; the safe operating region is
+any combination that keeps a non-trivial fraction of the added data spread across the
 input space.
 
 \section{The Identification Method}
 \label{sec:detector}
-The analyses so far hold the weakspot detector fixed; the final experiment instead
-fixes every other factor at the operating point and varies the identification method
-across all seventeen detectors of the companion work~\cite{weakspotprior}, each
-sharing the same initial model, induced gap and candidate pool for a clean head-to-head
-over twenty seeds. Two findings emerge from Fig.~\ref{fig:detector}. First, in this
+Because the sweep's dimensionality made evaluating every detector prohibitive, the
+broad sweep held the identification method to five detectors chosen for their strong and
+diverse performance in our previous work~\cite{weakspotprior}\todo{reference the
+specific detector comparison in the companion paper}: EVT\,$\times$\,GPR (geometric),
+kNN performance mapping, peaks-over-threshold (EVT), GPR/kNN (variance-weighted) and RBF
+interpolation. This experiment lifts that restriction, fixing every factor at the
+operating point and isolating the identification method across all seventeen detectors
+of the companion work over twenty seeds, each sharing the same initial model, induced
+gap and candidate pool. Two findings emerge from Fig.~\ref{fig:detector}. First, in this
 favourable regime the method is robust to the choice of detector: every one of the
-seventeen improves on the random baseline, both over the whole area and inside the
-weakspot. Second, the size of that improvement varies almost tenfold, from $0.157$ in
-whole-area MAE for the strongest, quantile regression, down to $0.016$ for the weakest.
-The weakest detectors are exactly those that fail to localise the gap, returning a
-centroid distance of nearly $0.5$ and an intersection-over-union of essentially zero;
-their guided selection is aimed at the wrong place and retains an advantage only
-through the uniform rehearsal it still contains. This is the fourth challenge of
-Section~\ref{sec:challenges} in operation, that a selection rule is only as trustworthy
-as the region it identifies: accurate localisation feeds directly through to training
-benefit, and a mislocated weakspot squanders most of it. The ranking also indicates
-that raw geometric overlap is not the whole story, since quantile regression attains
-the largest training benefit with only a moderate overlap score, which suggests that
-placing the selection mass in the right place matters more for retraining than
-capturing the exact extent of the region.
+seventeen beats the random baseline, over the whole area and inside the weakspot.
+Second, the improvement varies almost tenfold, from $0.157$ in whole-area MAE for the
+strongest, quantile regression, to $0.016$ for the weakest, which are exactly those that
+fail to localise the gap (centroid distance near $0.5$, intersection-over-union near
+zero) and retain an advantage only through the uniform rehearsal they still contain.
+This is the fourth challenge of Section~\ref{sec:challenges} in operation, that a
+selection rule is only as trustworthy as the region it identifies. That quantile
+regression attains the largest benefit with only a moderate overlap score further
+suggests that placing the selection mass in the right place matters more than capturing
+the region's exact extent.
 
 \begin{figure*}[t]
 \centering
