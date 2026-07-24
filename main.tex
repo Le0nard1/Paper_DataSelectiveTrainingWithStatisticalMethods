@@ -85,7 +85,7 @@ regression model from its error distribution alone, without access to ground
 truth~\cite{weakspotprior}. The present paper closes the
 loop: rather than treating weakspot identification only as a post-hoc diagnostic,
 we use it to steer training, spending the next unit of data where the model is weakest.
-This fits the fixed-dataset setting naturally, because it selects among data the model
+This fits the fixed-dataset setting naturally, because it selects among data the application
 already possesses rather than assuming an external source.
 
 An intuitive principle is not, by itself, evidence, and the behaviour of
@@ -99,8 +99,7 @@ how it depends on the training state and on these parameters, and identify the
 conditions under which it is most, and least, effective. To this end we build a training
 pipeline on the weakspot-identification methods of our previous work~\cite{weakspotprior}
 and compare it, in a controlled setup that isolates the effect of guided selection,
-against conventional training that draws data without regard to the model's weak
-regions.
+against conventional training that draws data randomly.
 
 In summary, this paper makes three contributions. First, it reframes the
 selection of informative data as the selection of data inside a model's
@@ -117,8 +116,7 @@ training, clarifies how they relate and differ, explains why they are difficult
 to apply to a fixed, fully-labelled dataset, and sets out the general challenges
 any such method must confront. Section~\ref{sec:approach} presents our
 weakspot-based selective-training method and the degrees of freedom it exposes,
-and Section~\ref{sec:setup} details the experimental setup and the factors it
-varies. Section~\ref{sec:experiments} reports the experiments and analyses the
+and Section~\ref{sec:setup} details the experimental setup and the factors under observation. Section~\ref{sec:experiments} reports the experiments and analyses the
 results, and Section~\ref{sec:discussion} interprets their broader implications
 and limitations, before the Conclusion summarises the study.
 
@@ -132,11 +130,8 @@ optimised rather than left to uniform random sampling. The premise common to the
 whole family is that examples differ in how much they can still teach a given
 model, so that a fixed training budget spends better on some than on
 others~\cite{katharopoulos2018,sorscher2022}. The families differ primarily in the
-signal they use to score an example and in how that signal relates to the training
-loop; we review the principal families below before drawing out the axes along
-which they organise. We then turn, in Section~\ref{sec:fixed}, to their
-limitations on a fixed, fully-labelled dataset and, in
-Section~\ref{sec:challenges}, to the challenges they share.
+signal they use to score an example and in how that insight relates to the training
+loop.
 
 \subsection{Families of Selection Strategies}
 \label{sec:families}
@@ -433,8 +428,7 @@ the factors listed in Table~\ref{tab:sweep}, grouped by the stage to which each
 belongs; their motivation was given in Section~\ref{sec:approach}. The gap radius
 includes the value zero, which induces no weakspot at all, so that the method is
 tested both on a deliberately created weak region and on weakness that is purely
-emergent. Every configuration is run against all detection methods, so the detector
-is itself a swept factor. The sweep is executed as a single resumable batch that
+emergent. The sweep is executed as a single resumable batch that
 records one row per detector per configuration and appends results incrementally,
 so the grid can be extended without recomputation.
 
