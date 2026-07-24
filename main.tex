@@ -475,62 +475,67 @@ Section~\ref{sec:discussion}.
 \section{The Broad Sweep: Weakspot Guidance Is Not Free}
 \label{sec:experiments}
 \label{sec:broadsweep}
-We first map the method's behaviour across the full factor grid of
-Table~\ref{tab:sweep}, a total of $324{,}000$ configurations evaluated against each
-of five detection methods, or slightly over $1.6$ million pipeline runs. The
-headline result is a caution rather than a triumph. Guided selection improved on
-the random baseline over the whole evaluation area in fewer than one configuration
-in three ($31.7\%$), and the median configuration was in fact marginally worse than
-random ($\Delta\mathrm{MAE}=+0.027$). Weakspot-guided training is therefore not a
-universally safe substitute for uniform sampling: whether it helps or harms is
-decided by how it is configured, not by the problem it is applied to, and a careless
-instantiation spends its data budget worse than adding points at random.
+We map the method across the full factor grid of Table~\ref{tab:grid}, sweeping its ten
+factors together with the five detection methods for a total of $324{,}000$
+configurations, or slightly over $1.6$ million pipeline runs. The result is a caution
+rather than a triumph: guided selection improved on the random baseline over the whole
+evaluation area in fewer than one configuration in three ($31.7\%$), and the median
+configuration was in fact marginally \emph{worse} than random
+($\Delta\mathrm{MAE}=+0.027$). Whether guidance helps or harms is therefore decided by
+how it is configured, not by the problem it is applied to.
 
-Where guidance did win, the successful configurations were far from uniformly
-distributed in the parameter space. Improvements concentrated on \emph{undertrained}
-initial models, obtained with short initial training and small training sets, on
-\emph{moderate-to-wide} selection kernels, and on \emph{low-to-moderate}
-concentration of the added data, precisely the regime in which the model still has a
-genuine, diagnosable weak region and the selection repairs it without starving the
-rest of the input space. Fixing the single configuration that this analysis
-identifies as robust, an induced gap of radius $0.12$, an initial model trained for
-only $12$ iterations on $100$ points, a selection kernel of width $\sigma=0.5$ with a
-rehearsal mix of $0.5$, and $100$ points added over $400$ retraining iterations,
-reduced the whole-area MAE from $0.95$ for the initial model to $0.48$, against
-$0.57$ for the matched random baseline. Guidance thus recovered roughly half of the
-initial error and beat the random baseline by $0.094$ in MAE (about $16\%$), winning
-in $64\%$ of the individual seed--detector runs; inside the induced weakspot the
-effect was larger still, the mean error falling from $3.12$ to $1.25$ against $1.68$
-for the baseline.
+\begin{table}[t]
+\centering
+\caption{The broad-sweep grid: each varied factor and the discrete values it took,
+ordered by influence (Fig.~\ref{fig:sensitivity}). The full Cartesian product gives
+$324{,}000$ configurations, each evaluated against all five detectors.}
+\label{tab:grid}
+\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+\textbf{Factor} & \textbf{Swept values} \\
+\midrule
+Rehearsal mix ratio             & $0,\ 0.25,\ 0.5,\ 0.75,\ 1.0$ \\
+Selection-kernel width $\sigma$ & $0.05,\ 0.1,\ 0.2,\ 0.3,\ 0.5$ \\
+Points added                    & $100,\ 300,\ 500,\ 700$ \\
+Initial training time (it.)     & $10,\ 20,\ 50,\ 100,\ 200$ \\
+Initial training-set size       & $200,\ 400,\ 800,\ 1500$ \\
+Function complexity (bumps)     & $3,\ 5$ \\
+Selection strategy              & distance, landscape, shape-aware \\
+Induced-gap radius              & $0,\ 0.12,\ 0.18$ \\
+Label-noise level               & $0,\ 0.05,\ 0.1$ \\
+Retraining time (it.)           & $100,\ 200,\ 400$ \\
+Detection method                & 5 detectors \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The ranking in Fig.~\ref{fig:sensitivity} explains this conditional character. It orders
-all ten swept factors by the whole-area advantage
-$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ each induces, one bar
-per factor spanning the range of the mean advantage across that factor's levels. Two
-features stand out. First, almost every bar lies to the left of zero: averaged over the
-grid guidance is usually worse than random, and no single parameter on its own carries
-the average across break-even. Second, the parameters are sharply ordered.
-The \emph{rehearsal mix ratio} is by a wide margin the most influential, spanning
-$0.45$ in MAE and reaching the
-break-even line only at its coverage-preserving extreme; the \emph{selection-kernel
-width} follows at $0.22$. These two, which both govern the focus--coverage balance,
-dominate every other factor. A middle tier, each spanning roughly $0.08$ to $0.11$,
-comprises the amount of data added and the two controls of the initial model state,
-its training time and its training-set size. The remaining factors, the function
-complexity, the selection strategy, the gap size, the label-noise level and the
-retraining time, each move the advantage by less than $0.04$ and are, over this grid,
-near-inert.
+Fig.~\ref{fig:sensitivity} shows that the factors are far from equal, and its ordering
+identifies where to look. The \emph{rehearsal mix ratio} and the \emph{selection-kernel
+width}, the two controls of the balance between focusing data on the weak region and
+preserving coverage of the rest, dominate every other factor, spanning $0.45$ and $0.22$
+in MAE; the initial-model state forms a middle tier, while the factors describing the
+task itself are near-inert. Guidance therefore wins only in a specific regime, an
+\emph{undertrained} initial model with enough coverage preserved, exemplified by the
+operating point of radius $0.12$, $12$ initial iterations, $\sigma=0.5$, mix $0.5$ and
+$100$ added points, which cuts the whole-area MAE from $0.95$ to $0.48$ against $0.57$
+for the matched baseline (a $16\%$ gain, winning $64\%$ of seed--detector runs) and the
+in-weakspot error from $3.12$ to $1.25$. Two dimensions therefore warrant closer study:
+the coverage balance that governs catastrophic forgetting, and the identification method
+itself; the next two sections take each in turn.
 
-This ordering maps directly onto the challenges of Section~\ref{sec:challenges}. The
-two dominant parameters are precisely the controls of catastrophic forgetting: they
-set how much of the training signal is poured into the weak region rather than spread
-for coverage. The model-state parameters that follow are the controls of the
-cold-start concern, governing whether the weakspot is diagnosed against a model mature
-enough to be trustworthy yet immature enough to have a genuine weak region. That the
-factors describing the task itself, its complexity, noise and gap size, matter least
-is reassuring, since it indicates that the method's success is decided by how it is
-configured rather than by the particular problem it is applied to. The two
-subsections that follow isolate the dominant mechanisms in turn.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_global_sensitivity.png}
+\caption{Sensitivity of every swept parameter, computed from the broad sweep. Each bar
+spans the mean whole-area advantage
+$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ across that
+parameter's levels (green and red mark its best and worst settings); positive is a
+guided win. The rehearsal mix ratio and the selection-kernel width dominate, while the
+task-describing factors are near-inert. That almost every bar lies left of zero is the
+sensitivity-space restatement that guidance helps only in a specific regime.}
+\label{fig:sensitivity}
+\end{figure}
 
 \section{The Dataset Mix: Countering Catastrophic Forgetting}
 \label{sec:mix}
@@ -589,19 +594,6 @@ that raw geometric overlap is not the whole story, since quantile regression att
 the largest training benefit with only a moderate overlap score, which suggests that
 placing the selection mass in the right place matters more for retraining than
 capturing the exact extent of the region.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_global_sensitivity.png}
-\caption{Sensitivity of every swept parameter, computed from the broad sweep. Each bar
-spans the mean whole-area advantage
-$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ across that
-parameter's levels (green and red mark its best and worst settings); positive is a
-guided win. The rehearsal mix ratio and the selection-kernel width dominate, while the
-task-describing factors are near-inert. That almost every bar lies left of zero is the
-sensitivity-space restatement that guidance helps only in a specific regime.}
-\label{fig:sensitivity}
-\end{figure}
 
 \begin{figure*}[t]
 \centering
