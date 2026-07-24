@@ -503,13 +503,13 @@ in $64\%$ of the individual seed--detector runs; inside the induced weakspot the
 effect was larger still, the mean error falling from $3.12$ to $1.25$ against $1.68$
 for the baseline.
 
-The map in Fig.~\ref{fig:sensitivity} explains this conditional character. It ranks all
-ten swept factors by the whole-area advantage
-$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ each induces, with one
-row per factor and one cell per level, the level value printed above and the mean
-advantage below. Two features stand out. First, almost every cell is red: averaged over
-the grid guidance is usually worse than random, and no single parameter on its own
-carries the average across break-even. Second, the parameters are sharply ordered.
+The ranking in Fig.~\ref{fig:sensitivity} explains this conditional character. It orders
+all ten swept factors by the whole-area advantage
+$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ each induces, one bar
+per factor spanning the range of the mean advantage across that factor's levels. Two
+features stand out. First, almost every bar lies to the left of zero: averaged over the
+grid guidance is usually worse than random, and no single parameter on its own carries
+the average across break-even. Second, the parameters are sharply ordered.
 The \emph{rehearsal mix ratio} is by a wide margin the most influential, spanning
 $0.45$ in MAE and reaching the
 break-even line only at its coverage-preserving extreme; the \emph{selection-kernel
@@ -590,19 +590,18 @@ the largest training benefit with only a moderate overlap score, which suggests 
 placing the selection mass in the right place matters more for retraining than
 capturing the exact extent of the region.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_sensitivity_heatmap.png}
-\caption{Influence of every swept parameter over the broad sweep: one row per factor and
-one cell per level, coloured by the mean whole-area advantage
-$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ at that level (green
-$=$ guided wins, red $=$ guided loses; the level value is printed above each cell and
-the mean advantage below). Rows are ordered by influence: the rehearsal mix ratio and
-the selection-kernel width dominate, the data budget and the initial-model controls form
-a middle tier, and the task-describing factors are near-inert. That almost every cell is
-red restates that guidance helps only in a specific regime.}
+\includegraphics[width=\columnwidth]{figures/fig_global_sensitivity.png}
+\caption{Sensitivity of every swept parameter, computed from the broad sweep. Each bar
+spans the mean whole-area advantage
+$\Delta=\mathrm{MAE}_\mathrm{random}-\mathrm{MAE}_\mathrm{guided}$ across that
+parameter's levels (green and red mark its best and worst settings); positive is a
+guided win. The rehearsal mix ratio and the selection-kernel width dominate, while the
+task-describing factors are near-inert. That almost every bar lies left of zero is the
+sensitivity-space restatement that guidance helps only in a specific regime.}
 \label{fig:sensitivity}
-\end{figure*}
+\end{figure}
 
 \begin{figure*}[t]
 \centering
