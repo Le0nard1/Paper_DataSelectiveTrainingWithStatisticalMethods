@@ -486,8 +486,8 @@ how it is configured, not by the problem it is applied to.
 
 \begin{table}[t]
 \centering
-\caption{The broad-sweep grid: each varied factor and the discrete values it took,
-ordered by influence (Fig.~\ref{fig:sensitivity}). The full Cartesian product gives
+\caption{The broad-sweep grid: the discrete values taken by each swept factor, listed
+in the pipeline order of Table~\ref{tab:sweep}. The full Cartesian product gives
 $324{,}000$ configurations, each evaluated against all five detectors.}
 \label{tab:grid}
 \small
@@ -495,17 +495,17 @@ $324{,}000$ configurations, each evaluated against all five detectors.}
 \toprule
 \textbf{Factor} & \textbf{Swept values} \\
 \midrule
-Rehearsal mix ratio             & $0,\ 0.25,\ 0.5,\ 0.75,\ 1.0$ \\
+Function complexity (bumps)     & $3,\ 5$ \\
+Label-noise level               & $0,\ 0.05,\ 0.1$ \\
+Initial training-set size       & $200,\ 400,\ 800,\ 1500$ \\
+Induced-gap radius              & $0,\ 0.12,\ 0.18$ \\
+Initial training time (it.)     & $10,\ 20,\ 50,\ 100,\ 200$ \\
+Detection method                & 5 detectors \\
 Selection-kernel width $\sigma$ & $0.05,\ 0.1,\ 0.2,\ 0.3,\ 0.5$ \\
 Points added                    & $100,\ 300,\ 500,\ 700$ \\
-Initial training time (it.)     & $10,\ 20,\ 50,\ 100,\ 200$ \\
-Initial training-set size       & $200,\ 400,\ 800,\ 1500$ \\
-Function complexity (bumps)     & $3,\ 5$ \\
 Selection strategy              & distance, landscape, shape-aware \\
-Induced-gap radius              & $0,\ 0.12,\ 0.18$ \\
-Label-noise level               & $0,\ 0.05,\ 0.1$ \\
+Rehearsal mix ratio             & $0,\ 0.25,\ 0.5,\ 0.75,\ 1.0$ \\
 Retraining time (it.)           & $100,\ 200,\ 400$ \\
-Detection method                & 5 detectors \\
 \bottomrule
 \end{tabular}
 \end{table}
