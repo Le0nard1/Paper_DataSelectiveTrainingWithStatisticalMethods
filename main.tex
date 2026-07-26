@@ -195,10 +195,7 @@ pruning or a fixed curriculum, or repeatedly against an evolving model, as in
 self-paced, importance-sampling and prioritised-training schemes. The third, and
 the most consequential for the present work, is whether the strategy acquires new
 labelled data, as active learning does, or only rearranges and reweights data
-already available, as all the others do. Our proposal shares its signal, namely
-where the model is weak, with uncertainty-based active learning, but operates,
-like curriculum and importance sampling, entirely within a dataset that is
-already labelled.
+already available, as all the others do.
 
 \subsection{Limitations in Industry Settings}
 \label{sec:fixed}
@@ -230,12 +227,8 @@ dataset, tend to re-emphasise the same handful of high-loss examples, some of th
 mislabelled or anomalous rather than genuinely
 informative~\cite{shrivastava2016,mindermann2022}.
 
-What no existing family provides, for the industrial case, is a strategy that neither
-assumes new labels nor discards data, but instead \emph{focuses} training on the regions
-where the model as a whole is failing, drawn from the labelled data already held rather
-than from isolated points that happen to have high loss. This is the gap the
-weakspot-guided approach is designed to fill: it does not remove data, but concentrates
-supervision where the model is weakest.
+No existing family fits the industrial case; the weakspot-guided approach developed in
+Section~\ref{sec:approach} is designed to fill this gap.
 
 \subsection{Challenges of Data-Selective Training}
 \label{sec:challenges}
@@ -245,61 +238,40 @@ several failure modes recur across the whole family of methods; a strategy that
 ignores them can perform worse than uniform sampling. We highlight the challenges
 most relevant to a weakspot-guided approach.
 
-The first is catastrophic failure through over-concentration. If selection
-focuses too narrowly on one region of the input space, the model is effectively
-trained on a shifting, non-stationary distribution, and neural networks are known
-to overwrite previously acquired knowledge when their training distribution
-changes, the phenomenon of catastrophic interference or catastrophic
-forgetting~\cite{mccloskey1989,kirkpatrick2017}. A method that repeatedly pours
-data into the current weakspot may therefore improve locally while degrading the
-regions it has stopped rehearsing, so that the model never converges but instead
-chases its own moving weak region. Preserving coverage of the whole input space
-while still emphasising the weak region is thus a central tension.
+The first is catastrophic forgetting through over-concentration. Focusing selection too
+narrowly trains the model on a shifting, non-stationary distribution, and neural networks
+overwrite previously acquired knowledge when that distribution
+changes~\cite{mccloskey1989,kirkpatrick2017}. A method that keeps pouring data into the
+current weakspot therefore improves locally while degrading the regions it no longer
+rehearses, so preserving coverage of the whole input space while still emphasising the
+weak region is the central tension.
 
-The second challenge is that the value of a selection depends on the state of the
-model that produced it. What is informative early in training, when the model is
-globally inaccurate, differs from what is informative late in training, when only
-isolated regions remain weak, and a signal computed against one model state can
-be stale or misleading once the model has moved~\cite{mindermann2022}. Closely
-related is the cold-start problem observed in active learning, where selection
-based on an immature model performs worse than random sampling because the model
-is not yet accurate enough to know where it is weak~\cite{chen2022coldstart}. Any
-weakspot-guided scheme must therefore decide how often to re-identify the weak
-region, and must expect its benefit to vary over the course of training.
+The second is that a selection is only as good as the model that produced it. What is
+informative early in training, when the model is globally inaccurate, differs from what
+is informative late, and a signal computed against an immature model can be stale or
+misleading, the cold-start problem familiar from active learning, where selection on an
+under-trained model performs worse than random~\cite{mindermann2022,chen2022coldstart}.
+A weakspot-guided scheme must therefore expect its benefit to vary with the training
+state.
 
-A third challenge is statistical bias. By construction, selective training makes
-the data the model learns from no longer representative of the deployment
-distribution, and this shift can bias both the learned model and any risk
-estimate computed from the selected data~\cite{farquhar2021}. Over-representing a
-weak region teaches the model that the region is more common than it truly is,
-which can distort its predictions elsewhere unless the selection is corrected or
-the loss reweighted to account for the altered sampling
-probabilities~\cite{farquhar2021,katharopoulos2018}.
+The third is statistical bias: over-representing a weak region shifts the training
+distribution away from deployment and can distort predictions elsewhere unless the
+sampling is corrected or the loss reweighted~\cite{farquhar2021,katharopoulos2018}.
 
-A fourth challenge is the difficulty of distinguishing genuinely informative data
-from merely difficult or corrupted data. Selection rules that chase high error
-will, on real datasets, tend to select mislabelled, noisy or anomalous points,
-because these produce large losses for reasons unrelated to useful
-information~\cite{mindermann2022}. A weakspot located by elevated model error is
-vulnerable to the same confound: a region may appear weak because it is genuinely
-under-learnt or merely because its labels are noisy, and a robust method must
-avoid over-investing in the latter.
+The fourth is that high error need not mean high information. Selection rules that chase
+error tend to select mislabelled, noisy or anomalous points, whose losses are large for
+reasons unrelated to useful learning~\cite{mindermann2022}, and a weakspot located by
+elevated error faces the same confound: a region may be genuinely under-learnt or merely
+noisy, and a robust method must not over-invest in the latter.
 
-Finally, when data are selected in batches rather than one point at a time, naive
-scoring tends to choose many near-identical examples, since the most informative
-points by an individual criterion are often close together; the resulting batch
-is redundant and wastes budget that diversity-aware selection would spend
-better~\cite{ash2020,chen2022coldstart}. A region-based weakspot criterion
-partially mitigates this, because it targets an area rather than isolated points,
-but it must still ensure that the emphasis it places within that area does not
-collapse onto a redundant few examples.
+Finally, batched selection by an individual score tends to pick near-identical points and
+waste budget, though a region-based criterion partially mitigates this by targeting an
+area rather than isolated points~\cite{ash2020,chen2022coldstart}.
 
-Together these challenges frame the questions the rest of the paper investigates.
-They motivate a method that emphasises a weak region without abandoning the rest
-of the input space, that re-identifies the region as the model evolves, and whose
-parameters can be tuned to trade focus against coverage; and they motivate an
-experimental setup capable of detecting when weakspot-guided training helps, when
-it is neutral, and when it does harm.
+Together these motivate a method that emphasises a weak region without abandoning the
+rest of the input space, re-identifies it as the model evolves, and exposes parameters
+that trade focus against coverage, and an experimental setup able to tell when guided
+training helps, when it is neutral, and when it harms.
 
 % =============================================================================
 \section{Weakspot-Based Selective Data Training}
@@ -412,9 +384,9 @@ truth, which is what makes an honest before-and-after comparison of a
 strategy possible. The target is a sum of Gaussian bumps on the unit square;
 labelled samples are drawn from it, and Gaussian noise is added to the training and
 selected labels only, so that the evaluation error reflects genuine model failure
-rather than label noise. Because the function is known analytically, so the model's 
-true error ca be measured exactly and we have an external reference for accurate comparison. The regression
-model is a multilayer perceptron of fixed architecture throughout.
+rather than label noise. Because the function is known analytically, the model's true error can be measured
+exactly, giving an external reference for an accurate before-and-after comparison. The
+regression model is a multilayer perceptron of fixed architecture throughout.
 
 \subsection{Pipeline Instantiation}
 The experiment realises the eight stages of Section~\ref{sec:approach} directly, so
@@ -452,10 +424,11 @@ belongs. Motivation is given in Section~\ref{sec:approach}.}
 \textbf{Stage} & \textbf{Varied factors} \\
 \midrule
 Setup / data & function complexity, label-noise level, dataset size,
-               distribution-shift strength, induced-gap radius ($0 =$ no weakspot) \\
+               induced-gap radius ($0 =$ no weakspot) \\
 Training     & initial training time \\
 Weakspot ID  & detection method (all detectors) \\
-Selection    & selection-kernel variance, number of points added, candidate-pool size \\
+Selection    & selection-kernel variance, number of points added, selection strategy,
+               rehearsal mix ratio \\
 Retraining   & retraining time \\
 \bottomrule
 \end{tabular}
