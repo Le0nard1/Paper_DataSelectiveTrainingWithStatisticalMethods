@@ -32,7 +32,25 @@ City, Country \\
 
 % =============================================================================
 \begin{abstract}
-tbd
+Supervised learning reaches a regime of diminishing returns long before a dataset is
+exhausted, and in industrial practice that dataset is fixed, fully labelled and small,
+so the only remaining lever is to extract more from the data already held. The
+established data-selective strategies each presuppose a resource this setting lacks:
+an unlabelled pool and a labelling oracle, a reliable external ordering of example
+difficulty, or a dataset large enough to be worth pruning. We therefore reframe the
+selection of informative data as the selection of data inside a model's weakspots, the
+compact regions in which its error concentrates, and close the loop from statistical
+weakspot identification to training with a pipeline whose selection kernel and rehearsal
+mix trade focus against coverage. Evaluated on a controlled regression task with
+analytically known ground truth over $324{,}000$ configurations and more than $1.6$
+million runs, guided selection improved on a matched random-selection baseline in only
+$31.7\%$ of configurations, its median configuration being marginally worse. The outcome is governed almost entirely by the
+balance between concentrating data on the weak region and preserving coverage of the
+rest, and far less by the task or the identification method: at a favourable operating
+point guidance reduces whole-area error by $16\%$ against the baseline and the model's
+in-weakspot error from $3.12$ to $1.25$, and all seventeen identification methods
+beat random selection, though their margins differ tenfold. Weakspot guidance is
+thus a conditional instrument whose sign is set by its configuration.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -446,7 +464,7 @@ identification itself is assessed separately, with the two metrics of our previo
 work~\cite{weakspotprior}: the centroid distance between the detected and the true
 weakspot, and the intersection-over-union of their extents. These per-configuration
 scores, each recorded for every detector, furnish the aggregate view analysed in
-Section~\ref{sec:discussion}.
+Section~\ref{sec:broadsweep}.
 
 % =============================================================================
 \section{The Broad Sweep: Weakspot Guidance Is Not Free}
@@ -593,11 +611,145 @@ to localise the gap (centroid distance $\approx0.5$, IoU $\approx0$).}
 % =============================================================================
 \section{Discussion}
 \label{sec:discussion}
-tbd
+
+The central result of this study is a conditional one. Weakspot-guided selection is
+not a free improvement over adding data at random: across the full grid it beat the
+matched baseline in fewer than one configuration in three, and the median
+configuration was marginally worse than doing nothing clever at all. At a well-chosen
+operating point, however, the same method cut the whole-area error by $16\%$ relative
+to that baseline, and the error inside the weak region to roughly two-fifths of its
+value before retraining. The distance
+between these two readings is itself the finding. Guidance is an instrument whose sign
+is decided by how it is configured, and reporting only its favourable configuration,
+the ordinary temptation when a method is proposed, would have described a different and
+much more flattering method than the one we studied.
+
+What decides that sign is coverage rather than aim. The sensitivity ordering of the
+broad sweep places the rehearsal mix ratio and the selection-kernel width, the two
+controls of the balance between concentrating data on the weak region and preserving the
+rest of the input space, ahead of every other factor, well ahead of the state of the
+initial model and far ahead of the descriptors of the task. The isolation experiments
+explain why. Sweeping the rehearsal mix under a narrow kernel produces a single
+monotone progression from parity with the baseline, through a genuine advantage at
+modest bias, to a collapse past a crossover near $\alpha\approx0.4$ at which the
+whole-area error exceeds even that of the model before retraining; sweeping the kernel
+width under pure guidance reproduces the same arc in mirror image. The operative
+constraint on weakspot-guided training is therefore not how accurately the weak region
+is located but how much of the remaining input space survives the retraining, and the
+first challenge of Section~\ref{sec:challenges} is not one risk among several but the
+binding one. That the two controls are substitutable is a practical convenience, since a
+practitioner may restore coverage through whichever of them the application makes easier
+to set, but it also means the two must be considered jointly: a narrow kernel is safe
+only when accompanied by ample rehearsal, and vice versa.
+
+The dependence on the initial model deserves comment because it runs against the
+expectation drawn from active learning. The best configurations were those in which
+selection was performed against a deliberately undertrained model, whereas the
+cold-start literature holds that a selection made on an immature model is
+unreliable and can be worse than random~\cite{chen2022coldstart}. Two opposing forces
+are at work. The reliability of the diagnosis improves as the model matures, while the
+headroom available for any intervention to exploit shrinks. In our setting the induced
+deficit is a coarse, spatially large gap that even a crudely fitted model exposes
+clearly, so the reliability term is weak and the headroom term dominates; a
+near-converged model has little left to gain and the redistribution of its training
+distribution is then more likely to disturb than to improve it. The practical reading is
+that the intervention belongs early, while the error surface is still strongly
+structured, rather than as a final polishing step. Where the deficit to be found is
+subtle rather than coarse, the balance between the two forces may well reverse, and this
+is a boundary of our conclusion rather than a general law.
+
+The identification method proved to be the least critical of the three axes we
+isolated, but the shape of its influence is instructive. At the operating point every
+one of the seventeen detectors beat the random baseline, so the approach does not depend
+on a fortunate choice of detector; yet the margins differ almost tenfold, and the
+weakest are precisely those that fail to localise the gap at all. That the strongest
+detector, quantile regression, attains its advantage with only a moderate
+intersection-over-union suggests that placing the selection mass in approximately the
+right place matters more than recovering the region's exact extent, which is
+encouraging for practice because approximate placement is the cheaper half of the
+problem. The behaviour of the failing detectors carries a methodological warning of its
+own. Because a guided pipeline configured for safety contains a substantial uniform
+rehearsal component, it can post a positive result even when its targeting conveys no
+information, and an apparently successful guided run is therefore not by itself evidence
+that the weakspot identification worked. Only the comparison against a matched control
+separates the contribution of the targeting from the contribution of the added data, and
+any future evaluation of such a pipeline should retain one.
+
+By contrast, the factors describing the task, the complexity of the target function, the
+level of label noise, the size of the initial dataset and the radius of the induced gap,
+were nearly inert. This cuts both ways. It is encouraging in that the efficacy of the
+method appears to be governed by its own configuration rather than by the problem it is
+applied to, which is what allows an operating point tuned on one task to be a plausible
+starting point on another. It is cautionary in that it denies the practitioner any cheap
+screening rule: one cannot inspect a dataset and predict from its properties whether
+guided selection will pay, and the coverage controls must be set carefully in every
+case. We note in particular that the average advantage changed little when the gap
+radius was set to zero and no weakspot was induced at all, which indicates that the
+behaviour we report is not an artefact of a manufactured deficit and that emergent
+weakness is treated much the same way.
+
+Several limitations bound these conclusions. The evaluation is deliberately synthetic
+and two-dimensional, which is what makes the error measurable against a noiseless
+reference and the weakspot's true extent known, but low dimension also makes both
+identification and uniform rehearsal far easier than they would be on industrial data,
+where covering the input space by uniform sampling is not achievable at any realistic
+budget; the coverage mechanism that dominates our results would there have to be
+approximated, and its cost would rise. Retraining was performed on the selected points
+alone, a conservative protocol chosen so that an over-concentrated selection is
+penalised through the forgetting it causes and the coverage question is made visible;
+fine-tuning on the union of the old and the new data, as industrial practice would
+ordinarily do, should shift the crossover and soften the collapse, so the numerical
+threshold near $\alpha\approx0.4$ is specific to this protocol rather than a property of
+the method. We analysed a single round of the evaluate--identify--select--retrain cycle
+in order to isolate one targeted selection from the confounds of iteration, and the
+behaviour of the loop when repeated, in particular whether the weak region migrates
+productively or oscillates, remains untested. The operating point was read off the same
+sweep that reports its advantage, so the $16\%$ figure is optimistic as a point
+estimate; it is the isolation experiments over fresh seeds, rather than the sweep
+maximum, that support the qualitative claims. Finally, one model class and one
+architecture were used throughout.
+
+These limitations map onto the work that follows most naturally. Iterating the loop with
+a schedule that relaxes the focus as the weak region shrinks is the obvious extension,
+and the substitutability of the two coverage controls suggests such a schedule could be
+expressed through either of them. Moving to higher-dimensional and genuinely industrial
+data would test the mechanism where rehearsal must be approximated rather than sampled.
+The fourth challenge of Section~\ref{sec:challenges}, that high error need not indicate
+high information, was not put under real strain here because the label noise we swept was
+uniform across the input space and so never produced a region that is irreducibly noisy
+rather than under-learnt; introducing heteroscedastic noise would create exactly that
+confound and test whether the identification stage can be made to distinguish the two.
+Correcting the distributional bias that the selection introduces, by importance
+weighting or a reweighted loss~\cite{farquhar2021,katharopoulos2018}, is a further
+avenue that our purely sampling-based treatment of coverage leaves open.
 
 % =============================================================================
 \section{Conclusion}
-tbd
+\label{sec:conclusion}
+
+This paper reframed the selection of informative training data as the selection of data
+inside a model's weakspots, a formulation suited to the fixed, fully-labelled and
+limited datasets that prevail in industry and that defeat the acquisition- and
+pruning-based strategies proven on benchmarks. We closed the loop from statistical
+weakspot identification to training with a concrete eight-stage pipeline whose selection
+kernel and rehearsal mix trade focus against coverage, and evaluated it against a matched
+random-selection baseline over $324{,}000$ configurations and more than $1.6$ million
+pipeline runs on a controlled regression task with analytically known ground truth.
+
+The evaluation shows that weakspot guidance is a conditional instrument rather than a
+free improvement. It beat the baseline in only $31.7\%$ of configurations and its median
+configuration was marginally worse, yet at a favourable operating point it reduced the
+whole-area error by $16\%$ against that baseline and the in-weakspot error of the
+initial model from $3.12$ to $1.25$. Which outcome obtains is determined chiefly by the balance between
+concentrating data on the weak region and preserving coverage of the rest, controlled
+interchangeably by the rehearsal mix or the kernel width, and much less by the task or by
+the identification method, since at a sound operating point all seventeen detectors of
+our previous work beat random selection. The benefit is largest when the model is still
+undertrained and headroom remains. Weakspot-guided training is therefore best understood
+as a redistribution of a fixed data budget whose gain is bounded by the coverage it
+sacrifices; applied within that constraint, and judged against a control that isolates
+the targeting from the mere addition of data, it delivers a substantial improvement, and
+a considerably larger one where the model was weakest.
 
 % =============================================================================
 
