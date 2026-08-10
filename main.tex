@@ -661,29 +661,32 @@ a reweighted loss~\cite{farquhar2021,katharopoulos2018}, is a further avenue.
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper reframed the selection of informative training data as the selection of data
-inside a model's weakspots, a formulation suited to the fixed, fully-labelled and
-limited datasets that prevail in industry and that defeat the acquisition- and
-pruning-based strategies proven on benchmarks. We closed the loop from statistical
-weakspot identification to training with a concrete eight-stage pipeline whose selection
-kernel and rehearsal mix trade focus against coverage, and evaluated it against a matched
-random-selection baseline over $324{,}000$ configurations and more than $1.6$ million
-pipeline runs on a controlled regression task with analytically known ground truth.
+We set out to spend a fixed, fully-labelled data budget where a model is weakest,
+using statistical weakspot identification to choose the target region and a Gaussian
+selection kernel with uniform rehearsal to control how sharply the budget concentrates
+there.
 
-The evaluation shows that weakspot guidance is a conditional instrument rather than a
-free improvement. It beat the baseline in only $31.7\%$ of configurations and its median
-configuration was marginally worse, yet at a favourable operating point it reduced the
-whole-area error by $16\%$ against that baseline and the in-weakspot error of the
-initial model from $3.12$ to $1.25$. Which outcome obtains is determined chiefly by the balance between
-concentrating data on the weak region and preserving coverage of the rest, controlled
-interchangeably by the rehearsal mix or the kernel width, and much less by the task or by
-the identification method, since at a sound operating point all seventeen detectors of
-our previous work beat random selection. The benefit is largest when the model is still
-undertrained and headroom remains. Weakspot-guided training is therefore best understood
-as a redistribution of a fixed data budget whose gain is bounded by the coverage it
-sacrifices; applied within that constraint, and judged against a control that isolates
-the targeting from the mere addition of data, it delivers a substantial improvement, and
-a considerably larger one where the model was weakest.
+The evaluation gives a conditional answer rather than an endorsement. Guidance beat the
+matched random baseline in fewer than a third of configurations, and helped only where
+enough coverage of the input space survived the retraining. Fig.~\ref{fig:isolation}
+shows the same arc reached from either control: parity at low bias, an interior region
+of genuine advantage, and catastrophic forgetting past a crossover near
+$\alpha\approx0.4$. Within that region the gain is substantial, cutting whole-area error
+by $16\%$ against the baseline and in-weakspot error to roughly two-fifths of its initial
+value. The choice of detector is second-order by comparison:
+Fig.~\ref{fig:detector} shows all seventeen beating random selection at a sound operating
+point, though by margins differing almost tenfold.
+
+For practice this yields three rules. Keep a non-trivial fraction of the added data
+spread across the input space, through either the rehearsal mix or the kernel width.
+Intervene while the model is still undertrained, since headroom matters more than the
+reliability of the diagnosis. Settle coverage first and treat the detector last.
+
+More broadly, the binding constraint on data-centric training in a fixed-dataset setting
+is not the accuracy of the targeting but the coverage it costs. A method that reports
+only its favourable configuration will therefore look far better than it is, and only a
+rehearsal-matched control separates the value of knowing where a model is weak from the
+value of simply giving it more data.
 
 % =============================================================================
 
