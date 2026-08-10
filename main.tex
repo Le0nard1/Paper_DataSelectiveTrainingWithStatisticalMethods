@@ -32,25 +32,26 @@ City, Country \\
 
 % =============================================================================
 \begin{abstract}
-Supervised learning reaches a regime of diminishing returns long before a dataset is
-exhausted, and in industrial practice that dataset is fixed, fully labelled and small,
-so the only remaining lever is to extract more from the data already held. The
-established data-selective strategies each presuppose a resource this setting lacks:
-an unlabelled pool and a labelling oracle, a reliable external ordering of example
-difficulty, or a dataset large enough to be worth pruning. We therefore reframe the
-selection of informative data as the selection of data inside a model's weakspots, the
-compact regions in which its error concentrates, and close the loop from statistical
-weakspot identification to training with a pipeline whose selection kernel and rehearsal
-mix trade focus against coverage. Evaluated on a controlled regression task with
-analytically known ground truth over $324{,}000$ configurations and more than $1.6$
-million runs, guided selection improved on a matched random-selection baseline in only
-$31.7\%$ of configurations, its median configuration being marginally worse. The outcome is governed almost entirely by the
-balance between concentrating data on the weak region and preserving coverage of the
-rest, and far less by the task or the identification method: at a favourable operating
-point guidance reduces whole-area error by $16\%$ against the baseline and the model's
-in-weakspot error from $3.12$ to $1.25$, and all seventeen identification methods
-beat random selection, though their margins differ tenfold. Weakspot guidance is
-thus a conditional instrument whose sign is set by its configuration.
+In industrial practice a training dataset is fixed, fully labelled and small, and
+supervised learning reaches diminishing returns long before it is exhausted, so the only
+lever left is to extract more from the data already held. The established
+data-selective strategies each rest on assumptions ill-suited to this setting, whether a
+labelling oracle, an external ordering of example difficulty, or a dataset large enough
+to prune, yet all share one idea: a training budget is spent better on a curated set of
+the most informative data points. We adopt that idea at a different granularity,
+reframing informative-data selection as selection inside a model's weakspots, the
+compact regions in which its error concentrates, and closing the loop from statistical
+weakspot identification to training. To analyse the approach we designed a controlled
+regression setup with known ground truth, matching every guided selection against a
+random-selection baseline. Its effective implementation depends on several factors,
+among them the sharpness of the selection, the state of the model when the weakspot is
+identified, and the identification method itself; guided selection improved on the
+baseline in only $31.7\%$ of the configurations examined, so it demands careful and
+sensitive application rather than adoption by default. The most significant factor
+proved to be the mix of curated with uniformly drawn data, the counter to one of the
+central challenges of data-centric training, catastrophic forgetting. Set well, it
+reduces whole-area error by $16\%$ against the baseline and the model's error inside the
+weak region from $3.12$ to $1.25$.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -146,14 +147,12 @@ and limitations, before the Conclusion summarises the study.
 \section{Data-Selective Training Strategies}
 \label{sec:strategies}
 
-Data-selective training refers to any strategy that treats the choice of which
-examples to learn from, and in what order or proportion, as a decision to be
-optimised rather than left to uniform random sampling. The premise common to the
-whole family is that examples differ in how much they can still teach a given
-model, so that a fixed training budget spends better on some than on
-others~\cite{katharopoulos2018,sorscher2022}. The families differ primarily in the
-signal they use to score an example and in how that insight relates to the training
-loop.
+Data-selective training treats the choice of which examples to learn from, and in
+what order or proportion, as a decision to be optimised rather than left to uniform
+random sampling. Its premise is that examples differ in how much they can still
+teach a given model, so that a fixed training budget spends better on some than on
+others~\cite{katharopoulos2018,sorscher2022}. The families below differ in the
+signal they use to score an example and in how that signal enters the training loop.
 
 \subsection{Families of Selection Strategies}
 \label{sec:families}
@@ -162,87 +161,72 @@ Active learning scores unlabelled examples by expected informativeness and
 requests labels for the most informative ones, iterating between querying and
 retraining~\cite{settles2009,cohn1996}. Its canonical signal is model
 uncertainty, favouring points near a decision boundary or with high predictive
-variance, although diversity- and representativeness-based criteria such as
-core-set selection instead choose points that best cover the input
-distribution~\cite{sener2018}, and hybrid gradient-embedding methods combine the
-two~\cite{ash2020}. Active learning is thus fundamentally an \emph{acquisition}
-strategy: its purpose is to decide which of many unlabelled points are worth the
-cost of a label.
+variance. Diversity-based criteria such as core-set selection instead choose
+points that best cover the input distribution~\cite{sener2018}, and hybrid
+gradient-embedding methods combine the two~\cite{ash2020}. Active learning is
+thus an \emph{acquisition} strategy: it decides which of many unlabelled points
+are worth the cost of a label.
 
-Curriculum learning fixes the dataset and instead manipulates the order in which
-examples are presented, beginning with easy examples and gradually introducing
-harder ones, on the hypothesis that a well-shaped ordering speeds convergence and
-improves the final optimum of a non-convex objective~\cite{bengio2009}.
-Self-paced learning makes the same idea adaptive by letting the model, rather
-than a fixed schedule, decide which examples are currently easy enough to
-include, expanding the working set as training proceeds~\cite{kumar2010}. Both
-re-use data the model already holds and both rank examples by difficulty, but
-where curriculum learning relies on a predetermined difficulty measure,
-self-paced learning derives it from the model's own loss and so couples the
-ordering to the training state.
+Curriculum learning fixes the dataset and manipulates the order of presentation,
+beginning with easy examples and introducing harder ones gradually, on the
+hypothesis that a well-shaped ordering speeds convergence and improves the final
+optimum of a non-convex objective~\cite{bengio2009}. Self-paced learning makes
+the idea adaptive, letting the model rather than a fixed schedule decide which
+examples are currently easy enough to include~\cite{kumar2010}. Both re-use data
+already held and rank it by difficulty; they differ in that curriculum learning
+relies on a predetermined difficulty measure whereas self-paced learning derives
+one from the model's own loss, coupling the ordering to the training state.
 
-A third family moves in the opposite direction to curriculum learning,
-concentrating training on the examples the model finds hardest. Online
-hard-example mining selects, within each mini-batch, the examples of highest loss
-and updates only on them, on the grounds that easy examples dominate the data yet
-contribute little gradient~\cite{shrivastava2016}. Importance sampling formalises
-the same intuition by drawing examples in proportion to a principled measure such
-as the gradient norm, which provably reduces the variance of the stochastic
-gradient and accelerates training~\cite{katharopoulos2018}. More recent work
-refines ``hardest'' into ``most worth learning'', excluding examples that are
-noisy or already learnt and retaining those that are learnable and not yet
-learnt~\cite{mindermann2022}. These methods are \emph{reweighting} rather than
-acquisition strategies, and their scoring signal is recomputed continually as the
+A third family moves in the opposite direction, concentrating training on the
+examples the model finds hardest. Online hard-example mining updates only on the
+highest-loss examples of each mini-batch, on the grounds that easy examples
+dominate the data yet contribute little gradient~\cite{shrivastava2016}.
+Importance sampling formalises the same intuition by drawing examples in
+proportion to a principled measure such as the gradient norm, provably reducing
+the variance of the stochastic gradient~\cite{katharopoulos2018}. More recent
+work refines ``hardest'' into ``most worth learning'', excluding examples that
+are noisy or already learnt~\cite{mindermann2022}. These are \emph{reweighting}
+rather than acquisition strategies, and their scoring signal is recomputed as the
 model changes.
 
-A fourth perspective treats selection as \emph{compression} of an existing
-labelled dataset: given the full set, discard the examples that contribute least
-so that training on the remainder is cheaper with little loss of accuracy. A good
-pruning metric can, in principle, bend the power-law learning curve towards
-exponential scaling, but only when the retained subset is chosen well and the
-dataset is large enough to be redundant~\cite{sorscher2022}. Core-set methods
-provide the same compression through a geometric coverage
-guarantee~\cite{sener2018}.
+A fourth perspective treats selection as \emph{compression}: given the full
+labelled set, discard the examples that contribute least so that training on the
+remainder is cheaper with little loss of accuracy. A good pruning metric can bend
+the power-law learning curve towards exponential scaling, but only when the
+retained subset is chosen well and the dataset is large enough to be
+redundant~\cite{sorscher2022}. Core-set methods achieve the same compression
+through a geometric coverage guarantee~\cite{sener2018}.
 
-Despite their varied vocabulary, these families organise along a few axes. The
-first is the selection signal: model uncertainty (active learning), example
-difficulty measured externally (curriculum) or internally (self-paced,
-hard-example mining, importance sampling), or geometric coverage (core-set,
-pruning). The second is temporal: whether examples are scored once, as in static
-pruning or a fixed curriculum, or repeatedly against an evolving model, as in
-self-paced, importance-sampling and prioritised-training schemes. The third, and
-the most consequential for the present work, is whether the strategy acquires new
-labelled data, as active learning does, or only rearranges and reweights data
-already available, as all the others do.
+These families differ in their scoring signal and in whether an example is scored
+once or repeatedly against an evolving model, but the distinction that matters
+here is simpler: active learning acquires new labelled data, whereas every other
+family only rearranges and reweights data already available.
 
 \subsection{Limitations in Industry Settings}
 \label{sec:fixed}
 
-The setting that motivates this paper is the one that prevails in industry rather
-than on benchmarks: a single, limited, fully-labelled dataset is fixed before training
-begins, and the practitioner has only partial control over how it was acquired. Judged
-against this setting, several of the strategies above lose their footing. Active
-learning is the clearest case, because its defining operation, querying an oracle for
-the label of a chosen unlabelled point, presupposes both an unlabelled pool and an
-affordable labelling channel, neither of which exists once the dataset is fixed and
-fully labelled; and because the data-acquisition process is only partially under the
-practitioner's control, the specific examples its criterion asks for often cannot be
-obtained even in principle, so that its informativeness criteria remain conceptually
-valuable but its acquisition loop cannot run~\cite{settles2009,farquhar2021}. Curriculum
-and self-paced learning apply in principle, since they merely re-order fixed data, but
-they presuppose a reliable ordering of examples by difficulty, and in an industrial
-setting the nature of the problem is rarely understood well enough to score difficulty
-in that way; even where a schedule can be imposed, re-ordering alone creates no new
-information, and on a small dataset the model soon sees every example, so the schedule
-affects the optimisation path more than the ceiling of what can ultimately be
-learnt~\cite{bengio2009,kumar2010}. Data pruning and core-set selection point in the
-opposite direction, being designed to \emph{remove} data and paying off only when the
-dataset is large and redundant~\cite{sorscher2022}, whereas an industrial dataset is
-typically small enough that discarding data destroys information the model can ill
-afford to lose. Hard-example mining and importance sampling likewise apply and can
-improve sample efficiency, yet they score individual points and, on a small fixed
-dataset, tend to re-emphasise the same handful of high-loss examples, some of them
-mislabelled or anomalous rather than genuinely
+The setting that motivates this paper prevails in industry rather than on benchmarks:
+a single, limited, fully-labelled dataset is fixed before training begins, and the
+practitioner has only partial control over how it was acquired. Judged against it,
+several of the strategies above lose their footing. Active learning is the clearest
+case, since querying an oracle presupposes both an unlabelled pool and an affordable
+labelling channel, and neither exists once the dataset is fixed and fully labelled.
+Because acquisition is moreover only partly under the practitioner's control, the
+examples its criterion asks for often cannot be obtained even in principle; its
+informativeness criteria remain conceptually valuable, but its acquisition loop cannot
+run~\cite{settles2009,farquhar2021}.
+
+The remaining families apply in principle yet deliver little. Curriculum and self-paced
+learning merely re-order fixed data, but an industrial problem is rarely understood well
+enough to rank examples by difficulty, and re-ordering creates no new information: on a
+small dataset the model soon sees every example, so the schedule shapes the optimisation
+path rather than the ceiling of what can be learnt~\cite{bengio2009,kumar2010}. Data
+pruning and core-set selection point the wrong way, being designed to \emph{remove} data
+and paying off only on large, redundant datasets~\cite{sorscher2022}, whereas an
+industrial dataset is typically small enough that discarding data destroys information
+the model can ill afford to lose. Hard-example mining and importance sampling score
+individual points and, on a small fixed dataset, re-emphasise the same handful of
+high-loss examples, some mislabelled or anomalous rather than genuinely
 informative~\cite{shrivastava2016,mindermann2022}.
 
 No existing family fits the industrial case; the weakspot-guided approach developed in
@@ -251,40 +235,33 @@ Section~\ref{sec:approach} is designed to fill this gap.
 \subsection{Challenges of Data-Selective Training}
 \label{sec:challenges}
 
-Steering training towards a chosen subset of the data is not without risk, and
-several failure modes recur across the whole family of methods; a strategy that
-ignores them can perform worse than uniform sampling. We highlight the challenges
-most relevant to a weakspot-guided approach.
+Steering training towards a chosen subset is not without risk, and a strategy that
+ignores the recurring failure modes can perform worse than uniform sampling. We
+highlight the three most relevant to a weakspot-guided approach.
 
 The first is catastrophic forgetting through over-concentration. Focusing selection too
 narrowly trains the model on a shifting, non-stationary distribution, and neural networks
 overwrite previously acquired knowledge when that distribution
 changes~\cite{mccloskey1989,kirkpatrick2017}. A method that keeps pouring data into the
 current weakspot therefore improves locally while degrading the regions it no longer
-rehearses, so preserving coverage of the whole input space while still emphasising the
-weak region is the central tension.
+rehearses. Over-representing a weak region also shifts the training distribution away
+from deployment, biasing predictions elsewhere unless the sampling is corrected or the
+loss reweighted~\cite{farquhar2021,katharopoulos2018}. Preserving coverage of the whole
+input space while still emphasising the weak region is thus the central tension.
 
 The second is that a selection is only as good as the model that produced it. What is
 informative early in training, when the model is globally inaccurate, differs from what
 is informative late, and a signal computed against an immature model can be stale or
-misleading, the cold-start problem familiar from active learning, where selection on an
-under-trained model performs worse than random~\cite{mindermann2022,chen2022coldstart}.
-A weakspot-guided scheme must therefore expect its benefit to vary with the training
-state.
+misleading. This is the cold-start problem familiar from active learning, where selection
+on an under-trained model performs worse than
+random~\cite{mindermann2022,chen2022coldstart}. A weakspot-guided scheme must therefore
+expect its benefit to vary with the training state.
 
-The third is statistical bias: over-representing a weak region shifts the training
-distribution away from deployment and can distort predictions elsewhere unless the
-sampling is corrected or the loss reweighted~\cite{farquhar2021,katharopoulos2018}.
-
-The fourth is that high error need not mean high information. Selection rules that chase
+The third is that high error need not mean high information. Selection rules that chase
 error tend to select mislabelled, noisy or anomalous points, whose losses are large for
-reasons unrelated to useful learning~\cite{mindermann2022}, and a weakspot located by
+reasons unrelated to useful learning~\cite{mindermann2022}. A weakspot located by
 elevated error faces the same confound: a region may be genuinely under-learnt or merely
 noisy, and a robust method must not over-invest in the latter.
-
-Finally, batched selection by an individual score tends to pick near-identical points and
-waste budget, though a region-based criterion partially mitigates this by targeting an
-area rather than isolated points~\cite{ash2020,chen2022coldstart}.
 
 Together these motivate a method that emphasises a weak region without abandoning the
 rest of the input space, re-identifies it as the model evolves, and exposes parameters
@@ -295,13 +272,8 @@ training helps, when it is neutral, and when it harms.
 \section{Weakspot-Based Selective Data Training}
 \label{sec:approach}
 
-Every data-selective strategy surveyed in Section~\ref{sec:strategies} rests on a
-single premise: within a dataset some examples teach a given model more than
-others, and a fixed training budget is spent better on the informative examples
-than on the redundant ones. The strategies differ only in how they score
-informativeness, whether by predictive uncertainty, by example difficulty, by
-gradient magnitude, or by geometric coverage. We adopt the same premise but change
-the granularity at which informativeness is defined. Rather than scoring
+We adopt the premise common to every strategy of Section~\ref{sec:strategies} but
+change the granularity at which informativeness is defined. Rather than scoring
 individual points, we ask \emph{where} in the input space the model is least
 competent and treat the data lying in that region as the most informative.
 Selecting the most informative data then becomes selecting data inside the model's
@@ -407,20 +379,17 @@ exactly, giving an external reference for an accurate before-and-after compariso
 regression model is a multilayer perceptron of fixed architecture throughout.
 
 \subsection{Pipeline Instantiation}
-The experiment realises the eight stages of Section~\ref{sec:approach} directly, so
-we state here only the concrete choices rather than repeating the procedure. The
-\emph{setup} stage draws the dataset and, when a weakspot is required, induces it by
-withholding every point within a chosen radius of a centre. \emph{Training} and
-\emph{retraining} fit the multilayer perceptron for a set number of iterations, the
-latter on the selected points alone, so that an over-concentrated selection is
-penalised through the forgetting it induces. \emph{Evaluation} and
-\emph{re-evaluation} score the model on a fresh uniform sample of the landscape,
-which stands in for the deployment distribution. The \emph{weakspot-identification}
-stage applies one of the detection methods, taken unchanged from our previous
-work~\cite{weakspotprior}\todo{reference the previous weakspot-identification
-paper}, and \emph{data selection} draws new points from a candidate pool through the
-Gaussian selection kernel, with a matched uniform draw for the baseline. The
-\emph{overview} stage compares the initial, guided, and baseline models.
+The experiment realises the eight stages of Section~\ref{sec:approach} directly; we
+state only the concrete choices. A weakspot, where required, is induced by withholding
+every point within a chosen radius of a centre. Training and retraining fit the
+multilayer perceptron for a set number of iterations, the latter on the selected points
+alone, so that an over-concentrated selection is penalised through the forgetting it
+induces. Both evaluations score the model on a fresh uniform sample of the landscape,
+which stands in for the deployment distribution. Identification applies one of the
+detection methods, taken unchanged from our previous
+work~\cite{weakspotprior}\todo{reference the previous weakspot-identification paper},
+and selection draws new points from a candidate pool through the Gaussian selection
+kernel, with a matched uniform draw for the baseline.
 
 \subsection{Swept Parameters}
 To map the conditions under which the approach helps, we sweep the experiment over
@@ -577,7 +546,7 @@ Second, the improvement varies almost tenfold, from $0.157$ in whole-area MAE fo
 strongest, quantile regression, to $0.016$ for the weakest, which are exactly those that
 fail to localise the gap (centroid distance near $0.5$, intersection-over-union near
 zero) and retain an advantage only through the uniform rehearsal they still contain.
-This is the fourth challenge of Section~\ref{sec:challenges} in operation, that a
+This is the third challenge of Section~\ref{sec:challenges} in operation, that a
 selection rule is only as trustworthy as the region it identifies. That quantile
 regression attains the largest benefit with only a moderate overlap score further
 suggests that placing the selection mass in the right place matters more than capturing
@@ -612,116 +581,97 @@ to localise the gap (centroid distance $\approx0.5$, IoU $\approx0$).}
 \section{Discussion}
 \label{sec:discussion}
 
-The central result of this study is a conditional one. Weakspot-guided selection is
-not a free improvement over adding data at random: across the full grid it beat the
-matched baseline in fewer than one configuration in three, and the median
-configuration was marginally worse than doing nothing clever at all. At a well-chosen
-operating point, however, the same method cut the whole-area error by $16\%$ relative
-to that baseline, and the error inside the weak region to roughly two-fifths of its
-value before retraining. The distance
-between these two readings is itself the finding. Guidance is an instrument whose sign
-is decided by how it is configured, and reporting only its favourable configuration,
-the ordinary temptation when a method is proposed, would have described a different and
-much more flattering method than the one we studied.
+The central result of this study is a conditional one. Weakspot-guided selection is not
+a free improvement over adding data at random: across the full grid it beat the matched
+baseline in fewer than one configuration in three, and the median configuration was
+marginally worse. At a well-chosen operating point, however, the same method cut the
+whole-area error by $16\%$ relative to that baseline, and the error inside the weak
+region to roughly two-fifths of its value before retraining. The distance between these
+two readings is itself the finding. Guidance is an instrument whose sign is decided by
+how it is configured. Reporting only its favourable configuration, the ordinary
+temptation when a method is proposed, would have described a different and far more
+flattering method.
 
-What decides that sign is coverage rather than aim. The sensitivity ordering of the
-broad sweep places the rehearsal mix ratio and the selection-kernel width, the two
-controls of the balance between concentrating data on the weak region and preserving the
-rest of the input space, ahead of every other factor, well ahead of the state of the
-initial model and far ahead of the descriptors of the task. The isolation experiments
-explain why. Sweeping the rehearsal mix under a narrow kernel produces a single
-monotone progression from parity with the baseline, through a genuine advantage at
-modest bias, to a collapse past a crossover near $\alpha\approx0.4$ at which the
-whole-area error exceeds even that of the model before retraining; sweeping the kernel
-width under pure guidance reproduces the same arc in mirror image. The operative
-constraint on weakspot-guided training is therefore not how accurately the weak region
-is located but how much of the remaining input space survives the retraining, and the
-first challenge of Section~\ref{sec:challenges} is not one risk among several but the
-binding one. That the two controls are substitutable is a practical convenience, since a
-practitioner may restore coverage through whichever of them the application makes easier
-to set, but it also means the two must be considered jointly: a narrow kernel is safe
-only when accompanied by ample rehearsal, and vice versa.
+What decides that sign is coverage rather than aim. The sensitivity ordering places the
+rehearsal mix ratio and the selection-kernel width ahead of every other factor, well
+ahead of the state of the initial model and far ahead of the descriptors of the task.
+These two are the controls of the balance between concentrating data on the weak region
+and preserving the rest of the input space. The isolation experiments explain their
+dominance. Sweeping the rehearsal mix under a narrow kernel produces a single monotone
+progression: parity with the baseline, then a genuine advantage at modest bias, then a
+collapse past a crossover near $\alpha\approx0.4$ at which the whole-area error exceeds
+even that of the model before retraining. Sweeping the kernel width under pure guidance
+reproduces the arc in mirror image. The operative constraint is therefore not how
+accurately the weak region is located but how much of the remaining input space survives
+the retraining, and the first challenge of Section~\ref{sec:challenges} is the binding
+one rather than one risk among several. That the two controls are substitutable is a
+practical convenience, but it also means they must be set jointly: a narrow kernel is
+safe only with ample rehearsal, and vice versa.
 
-The dependence on the initial model deserves comment because it runs against the
-expectation drawn from active learning. The best configurations were those in which
-selection was performed against a deliberately undertrained model, whereas the
-cold-start literature holds that a selection made on an immature model is
-unreliable and can be worse than random~\cite{chen2022coldstart}. Two opposing forces
-are at work. The reliability of the diagnosis improves as the model matures, while the
-headroom available for any intervention to exploit shrinks. In our setting the induced
-deficit is a coarse, spatially large gap that even a crudely fitted model exposes
-clearly, so the reliability term is weak and the headroom term dominates; a
-near-converged model has little left to gain and the redistribution of its training
-distribution is then more likely to disturb than to improve it. The practical reading is
-that the intervention belongs early, while the error surface is still strongly
-structured, rather than as a final polishing step. Where the deficit to be found is
-subtle rather than coarse, the balance between the two forces may well reverse, and this
-is a boundary of our conclusion rather than a general law.
+The dependence on the initial model runs against the expectation drawn from active
+learning. The best configurations were those in which selection was performed against a
+deliberately undertrained model, whereas the cold-start literature holds that a
+selection made on an immature model is unreliable and can be worse than
+random~\cite{chen2022coldstart}. Two opposing forces are at work: the reliability of the
+diagnosis improves as the model matures, while the headroom available to any
+intervention shrinks. Our induced deficit is a coarse, spatially large gap that even a
+crudely fitted model exposes clearly, so the reliability term is weak and headroom
+dominates. A near-converged model has little left to gain, and redistributing its
+training distribution is then more likely to disturb than to improve it. The
+intervention therefore belongs early, while the error surface is still strongly
+structured, rather than as a final polishing step. Where the deficit is subtle rather
+than coarse the balance may reverse, so this is a boundary of our conclusion rather than
+a general law.
 
-The identification method proved to be the least critical of the three axes we
-isolated, but the shape of its influence is instructive. At the operating point every
-one of the seventeen detectors beat the random baseline, so the approach does not depend
-on a fortunate choice of detector; yet the margins differ almost tenfold, and the
-weakest are precisely those that fail to localise the gap at all. That the strongest
-detector, quantile regression, attains its advantage with only a moderate
-intersection-over-union suggests that placing the selection mass in approximately the
-right place matters more than recovering the region's exact extent, which is
-encouraging for practice because approximate placement is the cheaper half of the
-problem. The behaviour of the failing detectors carries a methodological warning of its
-own. Because a guided pipeline configured for safety contains a substantial uniform
-rehearsal component, it can post a positive result even when its targeting conveys no
-information, and an apparently successful guided run is therefore not by itself evidence
-that the weakspot identification worked. Only the comparison against a matched control
-separates the contribution of the targeting from the contribution of the added data, and
-any future evaluation of such a pipeline should retain one.
+The identification method proved the least critical of the three axes, but the shape of
+its influence is instructive. At the operating point every one of the seventeen
+detectors beat the random baseline, so the approach does not depend on a fortunate
+choice of detector. The margins nonetheless differ almost tenfold, and the weakest are
+precisely those that fail to localise the gap at all. That the strongest detector,
+quantile regression, attains its advantage with only a moderate
+intersection-over-union suggests that placing the selection mass approximately right
+matters more than recovering the region's exact extent, which is encouraging because
+approximate placement is the cheaper half of the problem. The failing detectors carry a
+methodological warning. A guided pipeline configured for safety contains a substantial
+uniform rehearsal component, so it can post a positive result even when its targeting
+conveys no information. An apparently successful guided run is therefore not by itself
+evidence that the identification worked, and any future evaluation of such a pipeline
+should retain a matched control.
 
-By contrast, the factors describing the task, the complexity of the target function, the
-level of label noise, the size of the initial dataset and the radius of the induced gap,
-were nearly inert. This cuts both ways. It is encouraging in that the efficacy of the
-method appears to be governed by its own configuration rather than by the problem it is
-applied to, which is what allows an operating point tuned on one task to be a plausible
-starting point on another. It is cautionary in that it denies the practitioner any cheap
-screening rule: one cannot inspect a dataset and predict from its properties whether
-guided selection will pay, and the coverage controls must be set carefully in every
-case. We note in particular that the average advantage changed little when the gap
-radius was set to zero and no weakspot was induced at all, which indicates that the
-behaviour we report is not an artefact of a manufactured deficit and that emergent
-weakness is treated much the same way.
+The factors describing the task, by contrast, were nearly inert. This cuts both ways.
+The efficacy of the method appears to be governed by its own configuration rather than
+by the problem, which allows an operating point tuned on one task to serve as a
+plausible starting point on another; but it also denies the practitioner any cheap
+screening rule, since no dataset property predicts whether guidance will pay. Notably,
+the average advantage changed little when no weakspot was induced at all, so the
+behaviour we report is not an artefact of a manufactured deficit.
 
 Several limitations bound these conclusions. The evaluation is deliberately synthetic
 and two-dimensional, which is what makes the error measurable against a noiseless
-reference and the weakspot's true extent known, but low dimension also makes both
-identification and uniform rehearsal far easier than they would be on industrial data,
-where covering the input space by uniform sampling is not achievable at any realistic
-budget; the coverage mechanism that dominates our results would there have to be
-approximated, and its cost would rise. Retraining was performed on the selected points
-alone, a conservative protocol chosen so that an over-concentrated selection is
-penalised through the forgetting it causes and the coverage question is made visible;
-fine-tuning on the union of the old and the new data, as industrial practice would
-ordinarily do, should shift the crossover and soften the collapse, so the numerical
-threshold near $\alpha\approx0.4$ is specific to this protocol rather than a property of
-the method. We analysed a single round of the evaluate--identify--select--retrain cycle
-in order to isolate one targeted selection from the confounds of iteration, and the
-behaviour of the loop when repeated, in particular whether the weak region migrates
-productively or oscillates, remains untested. The operating point was read off the same
-sweep that reports its advantage, so the $16\%$ figure is optimistic as a point
-estimate; it is the isolation experiments over fresh seeds, rather than the sweep
-maximum, that support the qualitative claims. Finally, one model class and one
-architecture were used throughout.
+reference and the weakspot's true extent known. Low dimension also makes uniform
+rehearsal far easier than it would be on industrial data, where covering the input space
+by uniform sampling is unachievable at any realistic budget; the coverage mechanism that
+dominates our results would there have to be approximated. Retraining used the selected
+points alone, a conservative protocol that makes the coverage question visible by
+penalising over-concentration. Fine-tuning on the union of old and new data, as
+industrial practice would ordinarily do, should shift the crossover and soften the
+collapse, so the threshold near $\alpha\approx0.4$ is specific to this protocol rather
+than a property of the method. We analysed a single round of the cycle, leaving the
+repeated loop untested. Finally, the operating point was read off the same sweep that
+reports its advantage, so the $16\%$ figure is optimistic as a point estimate; the
+qualitative claims rest on the isolation experiments over fresh seeds. One model class
+was used throughout.
 
-These limitations map onto the work that follows most naturally. Iterating the loop with
-a schedule that relaxes the focus as the weak region shrinks is the obvious extension,
-and the substitutability of the two coverage controls suggests such a schedule could be
-expressed through either of them. Moving to higher-dimensional and genuinely industrial
+These limitations map onto the work that follows. Iterating the loop with a schedule
+that relaxes focus as the weak region shrinks is the obvious extension, expressible
+through either coverage control. Moving to higher-dimensional and genuinely industrial
 data would test the mechanism where rehearsal must be approximated rather than sampled.
-The fourth challenge of Section~\ref{sec:challenges}, that high error need not indicate
-high information, was not put under real strain here because the label noise we swept was
-uniform across the input space and so never produced a region that is irreducibly noisy
-rather than under-learnt; introducing heteroscedastic noise would create exactly that
-confound and test whether the identification stage can be made to distinguish the two.
-Correcting the distributional bias that the selection introduces, by importance
-weighting or a reweighted loss~\cite{farquhar2021,katharopoulos2018}, is a further
-avenue that our purely sampling-based treatment of coverage leaves open.
+The third challenge of Section~\ref{sec:challenges}, that high error need not indicate
+high information, was not put under real strain here, because the label noise we swept
+was uniform across the input space and so never produced a region that is irreducibly
+noisy rather than under-learnt; heteroscedastic noise would create that confound.
+Correcting the distributional bias the selection introduces, by importance weighting or
+a reweighted loss~\cite{farquhar2021,katharopoulos2018}, is a further avenue.
 
 % =============================================================================
 \section{Conclusion}
