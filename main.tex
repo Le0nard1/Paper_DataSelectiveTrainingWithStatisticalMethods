@@ -32,26 +32,26 @@ City, Country \\
 
 % =============================================================================
 \begin{abstract}
-In industrial practice a training dataset is fixed, fully labelled and small, and
-supervised learning reaches diminishing returns long before it is exhausted, so the only
-lever left is to extract more from the data already held. The established
-data-selective strategies each rest on assumptions ill-suited to this setting, whether a
-labelling oracle, an external ordering of example difficulty, or a dataset large enough
-to prune, yet all share one idea: a training budget is spent better on a curated set of
-the most informative data points. We adopt that idea at a different granularity,
-reframing informative-data selection as selection inside a model's weakspots, the
-compact regions in which its error concentrates, and closing the loop from statistical
-weakspot identification to training. To analyse the approach we designed a controlled
-regression setup with known ground truth, matching every guided selection against a
-random-selection baseline. Its effective implementation depends on several factors,
-among them the sharpness of the selection, the state of the model when the weakspot is
-identified, and the identification method itself; guided selection improved on the
-baseline in only $31.7\%$ of the configurations examined, so it demands careful and
-sensitive application rather than adoption by default. The most significant factor
-proved to be the mix of curated with uniformly drawn data, the counter to one of the
-central challenges of data-centric training, catastrophic forgetting. Set well, it
-reduces whole-area error by $16\%$ against the baseline and the model's error inside the
-weak region from $3.12$ to $1.25$.
+Supervised learning reaches a regime of diminishing returns long before a dataset is
+exhausted, and in industrial practice that dataset is fixed, fully labelled and small,
+so the only remaining lever is to extract more from the data already held. The
+established data-selective strategies each presuppose a resource this setting lacks:
+an unlabelled pool and a labelling oracle, a reliable external ordering of example
+difficulty, or a dataset large enough to be worth pruning. We therefore reframe the
+selection of informative data as the selection of data inside a model's weakspots, the
+compact regions in which its error concentrates, and close the loop from statistical
+weakspot identification to training with a pipeline whose selection kernel and rehearsal
+mix trade focus against coverage. Evaluated on a controlled regression task with
+analytically known ground truth over $324{,}000$ configurations and more than $1.6$
+million runs, guided selection improved on a matched random-selection baseline in only
+$31.7\%$ of configurations, its median configuration being marginally worse. The outcome
+is governed almost entirely by the balance between concentrating data on the weak region
+and preserving coverage of the rest, and far less by the task or the identification
+method: at a favourable operating point guidance reduces whole-area error by $16\%$
+against the baseline and the model's in-weakspot error from $3.12$ to $1.25$, and all
+seventeen identification methods beat random selection, though their margins differ
+tenfold. Weakspot guidance is thus a conditional instrument whose sign is set by its
+configuration.
 \end{abstract}
 
 \begin{IEEEkeywords}
