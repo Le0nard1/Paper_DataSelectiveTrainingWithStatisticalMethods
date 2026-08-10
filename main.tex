@@ -32,26 +32,22 @@ City, Country \\
 
 % =============================================================================
 \begin{abstract}
-Supervised learning reaches a regime of diminishing returns long before a dataset is
-exhausted, and in industrial practice that dataset is fixed, fully labelled and small,
-so the only remaining lever is to extract more from the data already held. The
-established data-selective strategies each presuppose a resource this setting lacks:
-an unlabelled pool and a labelling oracle, a reliable external ordering of example
-difficulty, or a dataset large enough to be worth pruning. We therefore reframe the
-selection of informative data as the selection of data inside a model's weakspots, the
-compact regions in which its error concentrates, and close the loop from statistical
-weakspot identification to training with a pipeline whose selection kernel and rehearsal
-mix trade focus against coverage. Evaluated on a controlled regression task with
-analytically known ground truth over $324{,}000$ configurations and more than $1.6$
-million runs, guided selection improved on a matched random-selection baseline in only
-$31.7\%$ of configurations, its median configuration being marginally worse. The outcome
-is governed almost entirely by the balance between concentrating data on the weak region
-and preserving coverage of the rest, and far less by the task or the identification
-method: at a favourable operating point guidance reduces whole-area error by $16\%$
-against the baseline and the model's in-weakspot error from $3.12$ to $1.25$, and all
-seventeen identification methods beat random selection, though their margins differ
-tenfold. Weakspot guidance is thus a conditional instrument whose sign is set by its
-configuration.
+Supervised learning reaches a regime of diminishing returns long before a dataset is exhausted, and in industrial practice that dataset is fixed, fully labelled and small. The only remaining lever is to extract more from the data already held. Established data-selective training strategies each rest on assumptions ill-suited to this setting,
+whether an additional labelling source, an external ordering of example difficulty, or a dataset large enough to prune, yet all share one idea: a training budget is spent better on a curated set of the most informative data points.
+We adopt that idea from a different
+perspective, reframing informative-data selection as selection inside a model's
+weakspots, the compact regions in which its error concentrates, and closing the loop from statistical weakspot identification to training. 
+To proof and analyse the approach we
+designed a controlled regression setup with known ground truth, matching every guided data
+selection against a random-selection baseline. Its effective implementation depends
+on several factors, among them the sharpness of the selection, the state of the model
+when the weakspot is identified, and the identification method itself. Guided
+selection in our settings improved on the baseline in only 31.7\% of the configurations examined, so
+it demands careful and sensitive application rather than adoption by default. The
+most significant factor proved to be the mix of curated with uniformly drawn data,
+the counter to one of the central challenges of data-centric training, catastrophic
+forgetting. Set well, it reduces whole-area error by 16% against the baseline and the
+model's error inside the weak region from 3.12 to 1.25. Allowing us to successfully optimize training within the mentioned restrictions.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -101,7 +97,9 @@ which a trained model performs poorly, often because that region was
 under-represented in the data seen so far~\cite{ovadia2019}. Our
 previous work developed statistical methods that locate such regions in a trained
 regression model from its error distribution alone, without access to ground
-truth~\cite{weakspotprior}. The present paper closes the
+truth~\cite{weakspotprior}. \todo{reference the
+specific detector comparison in the companion paper}
+The present paper closes the
 loop: rather than treating weakspot identification only as a post-hoc diagnostic,
 we use it to steer training, spending the next unit of data where the model is weakest.
 This fits the fixed-dataset setting naturally, because it selects among data the application
@@ -122,8 +120,7 @@ against conventional training that draws data randomly.
 
 In summary, this paper makes three contributions. First, it reframes the
 selection of informative data as the selection of data inside a model's
-weakspots, a formulation suited to the fixed, fully-labelled datasets common in
-industry. Second, it closes the loop from statistical weakspot identification to
+weakspots. Second, it closes the loop from statistical weakspot identification to
 training, giving a concrete weakspot-guided selection pipeline. Third, it
 evaluates that pipeline against a random-selection baseline across a controlled
 sweep, quantifying how its efficacy depends on the model state, the sharpness of
@@ -209,8 +206,7 @@ The setting that motivates this paper prevails in industry rather than on benchm
 a single, limited, fully-labelled dataset is fixed before training begins, and the
 practitioner has only partial control over how it was acquired. Judged against it,
 several of the strategies above lose their footing. Active learning is the clearest
-case, since querying an oracle presupposes both an unlabelled pool and an affordable
-labelling channel, and neither exists once the dataset is fixed and fully labelled.
+case, since additional querying presupposes both an unlabelled pool and an affordable labelling channel, and neither exists once the dataset is fixed and fully labelled.
 Because acquisition is moreover only partly under the practitioner's control, the
 examples its criterion asks for often cannot be obtained even in principle; its
 informativeness criteria remain conceptually valuable, but its acquisition loop cannot
@@ -229,7 +225,7 @@ individual points and, on a small fixed dataset, re-emphasise the same handful o
 high-loss examples, some mislabelled or anomalous rather than genuinely
 informative~\cite{shrivastava2016,mindermann2022}.
 
-No existing family fits the industrial case; the weakspot-guided approach developed in
+The weakspot-guided approach developed in
 Section~\ref{sec:approach} is designed to fill this gap.
 
 \subsection{Challenges of Data-Selective Training}
@@ -286,16 +282,7 @@ work~\cite{weakspotprior}. The object these methods operate on is the model's
 error distribution over the input space, obtained by evaluating the trained model
 on a sample of inputs and recording its error at each. A weakspot is the compact
 region in which this error concentrates, that is, the region occupied by the
-\emph{extrema} of the error distribution rather than by its bulk. The
-identification proceeds in two stages: a distribution-approximation method first
-reconstructs a continuous error-intensity surface from the finite, non-uniform
-sample of errors, and a parametric extractor then thresholds the upper extrema of
-that surface to return a weakspot as a centroid and an elliptical extent. Because
-the quantity of interest is the extremum of the error distribution, the small,
-data-poor region of highest error, the approach draws naturally on estimators of
-distributional extrema, from high-quantile regression to peaks-over-threshold
-extreme-value statistics, alongside the smoother surface estimators that describe
-the surrounding landscape~\cite{weakspotprior}.
+\emph{extrema} of the error distribution rather than by its bulk.
 
 Our contribution is to create the iterative loop from identifying a weakspot to
 correcting it. The method runs as a sequence of eight distinct stages:
@@ -329,15 +316,9 @@ method, and it governs directly the tension set out in
 Section~\ref{sec:challenges}. A small variance pours data almost entirely into the
 weakspot; trained on so concentrated a sample, the model sharpens where it was
 weak but risks the catastrophic forgetting of the regions no longer represented in
-its training data~\cite{mccloskey1989,kirkpatrick2017}. A large variance spreads
-the selection across the input space until, in the limit, it becomes
-indistinguishable from uniform sampling and the advantage of targeting disappears.
-Varying the variance therefore sweeps the method along the whole spectrum from
-sharply focused to effectively unfocused selection, and identifying where on that
-spectrum the guided selection is most effective is a central objective of the
-study.
+its training data~\cite{mccloskey1989,kirkpatrick2017}
 
-Several further degrees of freedom determine when the approach helps. The number
+Several further degrees of freedom determine the efficacy. The number
 of points added fixes the budget spent on the weak region. The model state at
 which the weakspot is identified, controlled by how long the initial model has
 trained, determines whether the diagnosis is trustworthy or premature, an echo of
@@ -354,13 +335,12 @@ efficacy the experiment is designed to quantify.
 
 Because adding almost any data may improve a model, a demonstration that
 weakspot-guided selection helps is meaningful only against a control that adds the
-same amount of data without targeting. We therefore pair every guided selection
+same amount of data without guidance. We therefore pair every guided selection
 with a \emph{random baseline} that draws the same number of new points uniformly
 at random, with no reference to the identified weakspot, and retrains under
-identical conditions. This baseline stands in for unaltered training, the ordinary
-practice of adding data without regard to where the model is weak, and it is the
+identical conditions. This baseline stands in for unaltered training and it is the
 reference against which the guided selection is judged. Comparing the two isolates
-the contribution of the targeting from the contribution of merely enlarging the
+the contribution of the guided from the contribution of merely enlarging the
 training data, and it is this difference, rather than the improvement over the
 initial model alone, that measures the value of the weakspot-based selection.
 
@@ -388,13 +368,12 @@ induces. Both evaluations score the model on a fresh uniform sample of the lands
 which stands in for the deployment distribution. Identification applies one of the
 detection methods, taken unchanged from our previous
 work~\cite{weakspotprior}\todo{reference the previous weakspot-identification paper},
-and selection draws new points from a candidate pool through the Gaussian selection
-kernel, with a matched uniform draw for the baseline.
+and selection draws new points from a candidate pool through a variable Gaussian selection kernel and distribution mix ratio.
 
 \subsection{Swept Parameters}
 To map the conditions under which the approach helps, we sweep the experiment over
 the factors listed in Table~\ref{tab:sweep}, grouped by the stage to which each
-belongs; their motivation was given in Section~\ref{sec:approach}. The gap radius
+belongs. The gap radius
 includes the value zero, which induces no weakspot at all, so that the method is
 tested both on a deliberately created weak region and on weakness that is purely
 emergent. The sweep is executed as a single resumable batch that
@@ -422,7 +401,7 @@ Retraining   & retraining time \\
 \end{table}
 
 \subsection{Evaluation Metrics}
-Model performance is measured by the \emph{mean absolute error} (MAE) of the
+Model performance is measured by the mean absolute error (MAE) of the
 predictions on the held-out evaluation set against the noiseless ground truth. We
 report the MAE of the initial model, of the guided-retrained model, and of the
 random baseline, so that the value of the targeting is read directly as the
@@ -439,8 +418,8 @@ Section~\ref{sec:broadsweep}.
 \section{The Broad Sweep: Weakspot Guidance Is Not Free}
 \label{sec:experiments}
 \label{sec:broadsweep}
-We map the method across the full factor grid of Table~\ref{tab:grid}, sweeping its ten
-factors together with the five detection methods for a total of $324{,}000$
+We map our approach across the full factor grid of Table~\ref{tab:grid}, sweeping its ten
+factors together with five detection methods for a total of $324{,}000$
 configurations, or slightly over $1.6$ million pipeline runs. The result is a caution
 rather than a triumph: guided selection improved on the random baseline over the whole
 evaluation area in fewer than one configuration in three ($31.7\%$), and the median
