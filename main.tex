@@ -46,8 +46,9 @@ selection in our settings improved on the baseline in only 31.7\% of the configu
 it demands careful and sensitive application rather than adoption by default. The
 most significant factor proved to be the mix of curated with uniformly drawn data,
 the counter to one of the central challenges of data-centric training, catastrophic
-forgetting. Set well, it reduces whole-area error by 16% against the baseline and the
-model's error inside the weak region from 3.12 to 1.25. Allowing us to successfully optimize training within the mentioned restrictions.
+forgetting. Set well, it reduces whole-area error by $16\%$ against the baseline and the
+model's error inside the weak region from $3.12$ to $1.25$, allowing us to optimise
+training successfully within the stated restrictions.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -434,6 +435,7 @@ in the pipeline order of Table~\ref{tab:sweep}. The full Cartesian product gives
 $324{,}000$ configurations, each evaluated against all five detectors.}
 \label{tab:grid}
 \small
+\resizebox{0.9\columnwidth}{!}{%
 \begin{tabular}{@{}l p{0.58\columnwidth}@{}}
 \toprule
 \textbf{Factor} & \textbf{Swept values} \\
@@ -452,7 +454,8 @@ Selection strategy              & distance, landscape, shape-aware \\
 Rehearsal mix ratio             & $0,\ 0.25,\ 0.5,\ 0.75,\ 1.0$ \\
 Retraining time (it.)           & $100,\ 200,\ 400$ \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Fig.~\ref{fig:sensitivity} shows that the factors are far from equal, and its ordering
@@ -485,6 +488,22 @@ sensitivity-space restatement that guidance helps only in a specific regime.}
 \label{fig:sensitivity}
 \end{figure}
 
+% Declared ahead of the section that cites it: a two-column figure* can only be set at
+% the top of a page later than its declaration point, so it must be placed early.
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_isolation_forgetting.png}
+\caption{Two interchangeable routes to coverage, each isolated over $50$ seeds
+(whole-area MAE; lower is better). \emph{Left:} a narrow kernel ($\sigma=0.1$) with
+the rehearsal mix $\alpha$ swept from pure uniform ($\alpha=0$, coinciding with the
+random baseline) to pure guided ($\alpha=1$). \emph{Right:} pure guidance
+($\alpha=1$) with the kernel width swept from wide to narrow. Both develop
+identically from coverage (left, $\approx$ baseline) to pure focus (right,
+catastrophic forgetting), with an interior region where guided selection beats the
+baseline. Shaded bands are $95\%$ confidence intervals.}
+\label{fig:isolation}
+\end{figure*}
+
 \section{The Dataset Mix: Countering Catastrophic Forgetting}
 \label{sec:mix}
 The broad sweep singles out catastrophic forgetting (Section~\ref{sec:challenges}) as
@@ -508,6 +527,17 @@ rewarded low mix \emph{or} wide kernels interchangeably; the safe operating regi
 any combination that keeps a non-trivial fraction of the added data spread across the
 input space.
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_best_vary_detector.png}
+\caption{Identification method isolated at the operating point: whole-area (left) and
+in-weakspot (right) advantage over the random baseline for all seventeen detectors of
+the companion work, sharing one initial model over twenty seeds. Every detector beats
+random, but the margin varies almost tenfold; the weakest are precisely those that fail
+to localise the gap (centroid distance $\approx0.5$, IoU $\approx0$).}
+\label{fig:detector}
+\end{figure*}
+
 \section{The Identification Method}
 \label{sec:detector}
 Because the sweep's dimensionality made evaluating every detector prohibitive, the
@@ -530,31 +560,6 @@ selection rule is only as trustworthy as the region it identifies. That quantile
 regression attains the largest benefit with only a moderate overlap score further
 suggests that placing the selection mass in the right place matters more than capturing
 the region's exact extent.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_isolation_forgetting.png}
-\caption{Two interchangeable routes to coverage, each isolated over $50$ seeds
-(whole-area MAE; lower is better). \emph{Left:} a narrow kernel ($\sigma=0.1$) with
-the rehearsal mix $\alpha$ swept from pure uniform ($\alpha=0$, coinciding with the
-random baseline) to pure guided ($\alpha=1$). \emph{Right:} pure guidance
-($\alpha=1$) with the kernel width swept from wide to narrow. Both develop
-identically from coverage (left, $\approx$ baseline) to pure focus (right,
-catastrophic forgetting), with an interior region where guided selection beats the
-baseline. Shaded bands are $95\%$ confidence intervals.}
-\label{fig:isolation}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_best_vary_detector.png}
-\caption{Identification method isolated at the operating point: whole-area (left) and
-in-weakspot (right) advantage over the random baseline for all seventeen detectors of
-the companion work, sharing one initial model over twenty seeds. Every detector beats
-random, but the margin varies almost tenfold; the weakest are precisely those that fail
-to localise the gap (centroid distance $\approx0.5$, IoU $\approx0$).}
-\label{fig:detector}
-\end{figure*}
 
 % =============================================================================
 \section{Discussion}
