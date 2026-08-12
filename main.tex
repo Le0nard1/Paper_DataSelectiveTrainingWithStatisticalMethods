@@ -36,13 +36,13 @@ Supervised learning reaches a regime of diminishing returns long before a datase
 whether an additional labelling source, an external ordering of example difficulty, or a dataset large enough to prune, yet all share one idea: a training budget is spent better on a curated set of the most informative data points.
 We adopt that idea from a different
 perspective, reframing informative-data selection as selection inside a model's
-weakspots, the compact regions in which its error concentrates, and closing the loop from statistical weakspot identification to training. 
-To proof and analyse the approach we
+weakspots, the compact regions in which its error concentrates, and closing the loop from statistical weakspot identification to training.
+To test and analyse the approach we
 designed a controlled regression setup with known ground truth, matching every guided data
 selection against a random-selection baseline. Its effective implementation depends
 on several factors, among them the sharpness of the selection, the state of the model
 when the weakspot is identified, and the identification method itself. Guided
-selection in our settings improved on the baseline in only 31.7\% of the configurations examined, so
+selection in our settings improved on the baseline in only $31.7\%$ of the configurations examined, so
 it demands careful and sensitive application rather than adoption by default. The
 most significant factor proved to be the mix of curated with uniformly drawn data,
 the counter to one of the central challenges of data-centric training, catastrophic
@@ -98,8 +98,9 @@ which a trained model performs poorly, often because that region was
 under-represented in the data seen so far~\cite{ovadia2019}. Our
 previous work developed statistical methods that locate such regions in a trained
 regression model from its error distribution alone, without access to ground
-truth~\cite{weakspotprior}. \todo{reference the
-specific detector comparison in the companion paper}
+truth~\cite{weakspotprior}. That work ranks eight base detectors and nine structured
+ensembles built from them, seventeen in all, by how accurately each localises a known
+weakspot under two complementary metrics.
 The present paper closes the
 loop: rather than treating weakspot identification only as a post-hoc diagnostic,
 we use it to steer training, spending the next unit of data where the model is weakest.
@@ -311,13 +312,13 @@ confounding effects of iteration.
 The stage that carries the method's essential freedom is the selection itself, and
 we deliberately do not add every point that falls inside the identified region.
 Instead, new points are drawn according to a \emph{selection distribution} centred
-on the weakspot, a Gaussian kernel whose variance sets how tightly the added data
-concentrate on the weak region. This variance is the central control of the
+on the weakspot, a Gaussian kernel whose width $\sigma$ sets how tightly the added
+data concentrate on the weak region. This width is the central control of the
 method, and it governs directly the tension set out in
-Section~\ref{sec:challenges}. A small variance pours data almost entirely into the
+Section~\ref{sec:challenges}. A small width pours data almost entirely into the
 weakspot; trained on so concentrated a sample, the model sharpens where it was
 weak but risks the catastrophic forgetting of the regions no longer represented in
-its training data~\cite{mccloskey1989,kirkpatrick2017}
+its training data~\cite{mccloskey1989,kirkpatrick2017}.
 
 Several further degrees of freedom determine the efficacy. The number
 of points added fixes the budget spent on the weak region. The model state at
@@ -362,14 +363,14 @@ regression model is a multilayer perceptron of fixed architecture throughout.
 \subsection{Pipeline Instantiation}
 The experiment realises the eight stages of Section~\ref{sec:approach} directly; we
 state only the concrete choices. A weakspot, where required, is induced by withholding
-every point within a chosen radius of a centre. Training and retraining fit the
-multilayer perceptron for a set number of iterations, the latter on the selected points
-alone, so that an over-concentrated selection is penalised through the forgetting it
-induces. Both evaluations score the model on a fresh uniform sample of the landscape,
-which stands in for the deployment distribution. Identification applies one of the
-detection methods, taken unchanged from our previous
-work~\cite{weakspotprior}\todo{reference the previous weakspot-identification paper},
-and selection draws new points from a candidate pool through a variable Gaussian selection kernel and distribution mix ratio.
+every point within a chosen radius of a centre. Training fits the multilayer perceptron
+for a set number of iterations, and retraining continues that same model for a further
+set number of iterations on the selected points alone, so that an over-concentrated
+selection is penalised through the forgetting it induces. Both evaluations score the
+model on a fresh uniform sample of the landscape, which stands in for the deployment
+distribution. Identification applies one of the detection methods, taken unchanged from
+our previous work~\cite{weakspotprior}, and selection draws new points from a candidate
+pool through a Gaussian selection kernel of variable width and the rehearsal mix ratio.
 
 \subsection{Swept Parameters}
 To map the conditions under which the approach helps, we sweep the experiment over
@@ -394,8 +395,9 @@ Setup / data & function complexity, label-noise level, dataset size,
                induced-gap radius ($0 =$ no weakspot) \\
 Training     & initial training time \\
 Weakspot ID  & detection method (all detectors) \\
-Selection    & selection-kernel variance, number of points added, selection strategy,
-               rehearsal mix ratio \\
+Selection    & selection-kernel width $\sigma$, number of points added, selection
+               strategy, rehearsal mix ratio ($0 =$ purely uniform, $1 =$ purely
+               guided) \\
 Retraining   & retraining time \\
 \bottomrule
 \end{tabular}
@@ -417,7 +419,6 @@ Section~\ref{sec:broadsweep}.
 
 % =============================================================================
 \section{The Broad Sweep: Weakspot Guidance Is Not Free}
-\label{sec:experiments}
 \label{sec:broadsweep}
 We map our approach across the full factor grid of Table~\ref{tab:grid}, sweeping its ten
 factors together with five detection methods for a total of $324{,}000$
@@ -459,8 +460,10 @@ Retraining time (it.)           & $100,\ 200,\ 400$ \\
 \end{table}
 
 Fig.~\ref{fig:sensitivity} shows that the factors are far from equal, and its ordering
-identifies where to look. The \emph{rehearsal mix ratio} and the \emph{selection-kernel
-width}, the two controls of the balance between focusing data on the weak region and
+identifies where to look. The \emph{rehearsal mix ratio} (the fraction of added points
+drawn from the guided kernel rather than uniformly, so that $0$ is purely uniform and
+$1$ purely guided) and the \emph{selection-kernel width}, the two controls of the
+balance between focusing data on the weak region and
 preserving coverage of the rest, dominate every other factor, spanning $0.45$ and $0.22$
 in MAE; the initial-model state forms a middle tier, while the factors describing the
 task itself are near-inert. Guidance therefore wins only in a specific regime, an
@@ -509,14 +512,17 @@ baseline. Shaded bands are $95\%$ confidence intervals.}
 The broad sweep singles out catastrophic forgetting (Section~\ref{sec:challenges}) as
 the dominant risk, and the two coverage controls, the rehearsal mix and the kernel
 width, were introduced to counter it. Fig.~\ref{fig:isolation} isolates each over $50$
-seeds. The left panel fixes a narrow kernel ($\sigma=0.1$) and sweeps the rehearsal mix
+seeds at the operating point, with the induced gap enlarged to radius $0.25$ so that the
+weak region is large enough for a local repair to register over the whole area. The left
+panel fixes a narrow kernel ($\sigma=0.1$) and sweeps the rehearsal mix
 $\alpha$ from pure uniform rehearsal ($\alpha=0$) to pure guided focus ($\alpha=1$). At
 $\alpha=0$ guided selection coincides with the random baseline by construction; for a
 modest bias ($\alpha\in[0.05,0.35]$) it pulls below the baseline and wins; and past a
 crossover near $\alpha\approx0.4$ the model, trained almost entirely inside the pinpoint
 weakspot, forgets the rest of the space catastrophically, its whole-area error rising
-above even that of the untrained initial model. This progression from parity through
-advantage to catastrophic forgetting is exactly what the challenge anticipates.
+further above the baseline with every further increase in the mix. This progression from
+parity through advantage to catastrophic forgetting is exactly what the challenge
+anticipates.
 
 The right panel shows the kernel width to be a second, substitutable route to the same
 effect: holding the selection purely guided ($\alpha=1$) and widening the kernel
@@ -542,13 +548,14 @@ to localise the gap (centroid distance $\approx0.5$, IoU $\approx0$).}
 \label{sec:detector}
 Because the sweep's dimensionality made evaluating every detector prohibitive, the
 broad sweep held the identification method to five detectors chosen for their strong and
-diverse performance in our previous work~\cite{weakspotprior}\todo{reference the
-specific detector comparison in the companion paper}: EVT\,$\times$\,GPR (geometric),
+diverse performance in the distance and IoU rankings of our previous
+work~\cite{weakspotprior}: EVT\,$\times$\,GPR (geometric),
 kNN performance mapping, peaks-over-threshold (EVT), GPR/kNN (variance-weighted) and RBF
 interpolation. This experiment lifts that restriction, fixing every factor at the
-operating point and isolating the identification method across all seventeen detectors
-of the companion work over twenty seeds, each sharing the same initial model, induced
-gap and candidate pool. Two findings emerge from Fig.~\ref{fig:detector}. First, in this
+operating point and enlarged gap of Section~\ref{sec:mix} and isolating the
+identification method across all seventeen detectors of the companion work over twenty
+seeds, each sharing the same initial model, induced gap and candidate pool. Two findings
+emerge from Fig.~\ref{fig:detector}. First, in this
 favourable regime the method is robust to the choice of detector: every one of the
 seventeen beats the random baseline, over the whole area and inside the weakspot.
 Second, the improvement varies almost tenfold, from $0.157$ in whole-area MAE for the
@@ -583,8 +590,8 @@ These two are the controls of the balance between concentrating data on the weak
 and preserving the rest of the input space. The isolation experiments explain their
 dominance. Sweeping the rehearsal mix under a narrow kernel produces a single monotone
 progression: parity with the baseline, then a genuine advantage at modest bias, then a
-collapse past a crossover near $\alpha\approx0.4$ at which the whole-area error exceeds
-even that of the model before retraining. Sweeping the kernel width under pure guidance
+collapse past a crossover near $\alpha\approx0.4$ beyond which the whole-area error
+falls ever further behind the baseline. Sweeping the kernel width under pure guidance
 reproduces the arc in mirror image. The operative constraint is therefore not how
 accurately the weak region is located but how much of the remaining input space survives
 the retraining, and the first challenge of Section~\ref{sec:challenges} is the binding
